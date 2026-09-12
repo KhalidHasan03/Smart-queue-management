@@ -1,47 +1,53 @@
 <x-guest-layout>
-    <!-- Session Status -->
+    <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-500">Welcome back</p>
+    <h2 class="text-[26px] font-extrabold tracking-tight text-slate-900 mt-1">Sign in to QueueCare</h2>
+    <p class="text-sm text-slate-500 mt-1 mb-6">Access your counter, queue and clinic dashboard.</p>
+
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
-    <form method="POST" action="{{ route('login') }}">
+    <form method="POST" action="{{ route('login') }}" x-data="{ show: false, email: '{{ old('email') }}' }">
         @csrf
 
-        <!-- Email Address -->
         <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
+            <x-input-label for="email" :value="__('Work email')" />
+            <div class="relative">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">✉️</span>
+                <x-text-input id="email" x-model="email" class="!ps-11" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" placeholder="you@clinic.com" />
+            </div>
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
-        <!-- Password -->
         <div class="mt-4">
             <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="current-password" />
-
+            <div class="relative">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔒</span>
+                <x-text-input id="password" class="!ps-11 !pe-12" :type="'password'" name="password" required autocomplete="current-password" placeholder="••••••••" x-bind:type="show ? 'text' : 'password'" />
+                <button type="button" @click="show = !show" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 text-sm font-bold" x-text="show ? 'Hide' : 'Show'"></button>
+            </div>
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
         </div>
 
-        <!-- Remember Me -->
-        <div class="block mt-4">
-            <label for="remember_me" class="inline-flex items-center">
-                <input id="remember_me" type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember">
-                <span class="ms-2 text-sm text-gray-600">{{ __('Remember me') }}</span>
+        <div class="flex items-center justify-between mt-4">
+            <label for="remember_me" class="inline-flex items-center cursor-pointer">
+                <input id="remember_me" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200" name="remember">
+                <span class="ms-2 text-sm font-semibold text-slate-600">{{ __('Remember me') }}</span>
             </label>
+            @if (Route::has('password.request'))
+                <a class="text-sm font-bold text-indigo-600 hover:text-indigo-500" href="{{ route('password.request') }}">{{ __('Forgot password?') }}</a>
+            @endif
         </div>
 
-        <div class="flex items-center justify-end mt-4">
-            @if (Route::has('password.request'))
-                <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('password.request') }}">
-                    {{ __('Forgot your password?') }}
-                </a>
-            @endif
+        <x-primary-button class="w-full mt-6 !py-3.5 !text-[15px]">
+            {{ __('Sign in →') }}
+        </x-primary-button>
 
-            <x-primary-button class="ms-3">
-                {{ __('Log in') }}
-            </x-primary-button>
+        <div class="mt-6 rounded-2xl bg-slate-50 border border-slate-100 p-4" x-data="{ role: '' }">
+            <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Demo — tap a role to fill login</p>
+            <div class="flex flex-wrap gap-1.5 mt-2.5">
+                @foreach(['superadmin@queuecare.local' => 'Super', 'admin@queuecare.local' => 'Admin', 'reception@queuecare.local' => 'Reception', 'operator@queuecare.local' => 'Counter', 'staff@queuecare.local' => 'Staff', 'display@queuecare.local' => 'Display'] as $mail => $label)
+                <button type="button" @click="email = '{{ $mail }}'; document.getElementById('password').value = 'password123'" class="text-xs font-bold bg-white border border-slate-200 rounded-full px-3 py-1.5 hover:border-indigo-300 hover:text-indigo-600 transition">{{ $label }}</button>
+                @endforeach
+            </div>
         </div>
     </form>
 </x-guest-layout>
