@@ -27,11 +27,11 @@ class PatientPhoneTest extends TestCase
         );
     }
 
-    public function test_same_phone_reuses_patient_record(): void
+    public function test_same_name_and_phone_reuses_patient_record(): void
     {
-        $t1 = $this->issueAs('First Visit', '01700000011');
+        $t1 = $this->issueAs('Karim Uddin', '01700000011');
         $t2 = (new TokenService)->issue(
-            ['name' => 'Second Visit', 'phone' => '01700000011'],
+            ['name' => 'Karim Uddin', 'phone' => '01700000011'],
             $t1->service_id,
             $t1->doctor_id,
             $t1->created_by
@@ -40,21 +40,43 @@ class PatientPhoneTest extends TestCase
         $this->assertSame($t1->patient_id, $t2->patient_id);
         $this->assertSame(1, Patient::where('phone', '01700000011')->count());
         $this->assertNotSame($t1->token_no, $t2->token_no);
+        $this->assertSame('Karim Uddin', $t1->fresh()->patient->name);
+    }
+
+    public function test_same_phone_with_different_name_is_rejected(): void
+    {
+        $t1 = $this->issueAs('Karim Uddin', '01700000055');
+
+        try {
+            (new TokenService)->issue(
+                ['name' => 'Rahim Uddin', 'phone' => '01700000055'],
+                $t1->service_id,
+                $t1->doctor_id,
+                $t1->created_by
+            );
+            $this->fail('Expected number-already-exists rejection.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->assertStringContainsString('already exists', collect($e->errors())->flatten()->first());
+        }
+
+        $this->assertSame('Karim Uddin', $t1->fresh()->patient->name);
+        $this->assertSame(1, Patient::where('phone', '01700000055')->count());
     }
 
     public function test_phone_formats_normalize_to_same_patient(): void
     {
-        $t1 = $this->issueAs('A', '01700000022');
+        $t1 = $this->issueAs('Ayesha Begum', '01700000022');
         $service = \App\Models\Service::firstOrFail();
         $doctor = \App\Models\Doctor::where('service_id', $service->id)->firstOrFail();
         $t2 = (new TokenService)->issue(
-            ['name' => 'A', 'phone' => '01 700-000022'],
+            ['name' => 'ayesha begum', 'phone' => '01 700-000022'],
             $service->id,
             $doctor->id,
             $t1->created_by
         );
 
         $this->assertSame($t1->patient_id, $t2->patient_id);
+        $this->assertSame('Ayesha Begum', $t1->fresh()->patient->name);
     }
 
     public function test_duplicate_phone_rejected_at_database(): void

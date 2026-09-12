@@ -33,20 +33,25 @@ class TokenService
 
             $patient = Patient::where('phone', $phone)->lockForUpdate()->first();
             if ($patient) {
-                $patient->fill($patientData);
-                if ($patient->isDirty()) {
-                    $patient->save();
+                if (mb_strtolower(trim($patient->name)) !== mb_strtolower(trim($patientData['name'] ?? ''))) {
+                    throw ValidationException::withMessages([
+                        'phone' => 'This contact number already exists for another patient ('.$patient->name.').',
+                    ]);
                 }
             } else {
                 try {
                     $patient = Patient::create($patientData);
                 } catch (\Illuminate\Database\QueryException $e) {
-                    $patient = Patient::where('phone', $phone)->lockForUpdate()->first()
-                        ?? throw $e;
-                    $patient->fill($patientData);
-                    if ($patient->isDirty()) {
-                        $patient->save();
+                    $existing = Patient::where('phone', $phone)->lockForUpdate()->first();
+                    if (! $existing) {
+                        throw $e;
                     }
+                    if (mb_strtolower(trim($existing->name)) !== mb_strtolower(trim($patientData['name'] ?? ''))) {
+                        throw ValidationException::withMessages([
+                            'phone' => 'This contact number already exists for another patient ('.$existing->name.').',
+                        ]);
+                    }
+                    $patient = $existing;
                 }
             }
 
