@@ -1,0 +1,93 @@
+<?php
+
+return [
+    'permissions' => [
+        'dashboard.view',
+        'users.view',
+        'users.create',
+        'users.edit',
+        'users.delete',
+        'roles.manage',
+        'customers.view',
+        'customers.create',
+        'customers.edit',
+        'customers.delete',
+        'services.manage',
+        'staff.manage',
+        'counters.manage',
+        'serials.view',
+        'serials.create',
+        'serials.print',
+        'queue.view',
+        'queue.next',
+        'queue.previous',
+        'queue.skip',
+        'queue.recall',
+        'queue.complete',
+        'queue.cancel',
+        'display.view',
+        'display.manage',
+        'reports.view',
+        'settings.manage',
+    ],
+
+    'roles' => [
+        'super_admin' => [
+            'label' => 'Super Admin',
+            'permissions' => ['*'],
+        ],
+        'admin' => [
+            'label' => 'Admin',
+            'permissions' => [
+                'dashboard.view',
+                'users.view', 'users.create', 'users.edit', 'users.delete',
+                'customers.view', 'customers.create', 'customers.edit', 'customers.delete',
+                'services.manage', 'staff.manage', 'counters.manage',
+                'serials.view', 'serials.create', 'serials.print',
+                'queue.view', 'queue.next', 'queue.previous', 'queue.skip',
+                'queue.recall', 'queue.complete', 'queue.cancel',
+                'display.view',
+                'reports.view',
+                'settings.manage',
+            ],
+        ],
+        'receptionist' => [
+            'label' => 'Receptionist',
+            'permissions' => [
+                'dashboard.view',
+                'customers.view', 'customers.create', 'customers.edit',
+                'serials.view', 'serials.create', 'serials.print',
+                'queue.view',
+                'display.view',
+                'reports.view',
+            ],
+        ],
+        'operator' => [
+            'label' => 'Counter Operator',
+            'permissions' => [
+                'dashboard.view',
+                'serials.view', 'serials.print',
+                'queue.view', 'queue.next', 'queue.previous', 'queue.skip',
+                'queue.recall', 'queue.complete', 'queue.cancel',
+                'display.view',
+            ],
+        ],
+        'staff' => [
+            'label' => 'Staff',
+            'permissions' => [
+                'dashboard.view',
+                'customers.view',
+                'serials.view',
+                'queue.view', 'queue.complete',
+                'display.view',
+            ],
+        ],
+        'display_operator' => [
+            'label' => 'Display Operator',
+            'permissions' => [
+                'dashboard.view',
+                'display.view', 'display.manage',
+            ],
+        ],
+    ],
+];
