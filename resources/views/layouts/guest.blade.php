@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name', 'QueueCare') }} — Sign in</title>
+    <title>{{ config('app.name', 'Queue-Pro') }} — Sign in</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap" rel="stylesheet" />
     <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700,800&display=swap" rel="stylesheet" />
@@ -16,7 +16,7 @@
         <div class="absolute -bottom-32 -left-20 w-[28rem] h-[28rem] rounded-full opacity-10 bg-white"></div>
         <div class="relative flex items-center gap-3">
             <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-400 via-violet-500 to-fuchsia-500 flex items-center justify-center text-2xl font-extrabold shadow-2xl">Q</div>
-            <div><p class="text-xl font-extrabold tracking-tight">QueueCare</p><p class="text-indigo-200/80 text-xs tracking-[0.2em] uppercase">Serial & Queue Suite</p></div>
+            <div><p class="text-xl font-extrabold tracking-tight">Queue-Pro</p><p class="text-indigo-200/80 text-xs tracking-[0.2em] uppercase">Hospital Queue Management</p></div>
         </div>
         <div class="relative">
             <p class="text-indigo-200/80 text-xs font-bold uppercase tracking-[0.25em]">Clinic front-desk, perfected</p>
@@ -32,8 +32,8 @@
     <div class="flex-1 flex items-center justify-center bg-[#eef2f7] p-4 sm:p-8" style="background-image:radial-gradient(#c7d2fe 1px,transparent 1px);background-size:22px 22px">
         <div class="w-full max-w-md">
             <div class="lg:hidden flex items-center justify-center gap-2 mb-5">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 flex items-center justify-center text-lg font-extrabold text-white">Q</div>
-                <span class="font-extrabold text-lg">QueueCare</span>
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 via-teal-400 to-emerald-400 flex items-center justify-center text-lg font-extrabold text-white">Q</div>
+                <span class="font-extrabold text-lg">Queue-Pro</span>
             </div>
             <div class="bg-white rounded-3xl shadow-[0_24px_70px_rgb(30,27,75,0.16)] border border-white p-6 sm:p-9 relative overflow-hidden">
                 <div class="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500"></div>

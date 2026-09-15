@@ -1,6 +1,6 @@
 <x-guest-layout>
     <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-500">Welcome back</p>
-    <h2 class="text-[26px] font-extrabold tracking-tight text-slate-900 mt-1">Sign in to QueueCare</h2>
+    <h2 class="text-[26px] font-extrabold tracking-tight text-slate-900 mt-1">Sign in to Queue-Pro</h2>
     <p class="text-sm text-slate-500 mt-1 mb-6">Access your counter, queue and clinic dashboard.</p>
 
     <x-auth-session-status class="mb-4" :status="session('status')" />

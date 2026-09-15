@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DisplayController;
+use App\Http\Controllers\LandingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QueueController;
 use App\Http\Controllers\ReportController;
@@ -15,7 +16,19 @@ use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TokenController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => redirect()->route('dashboard'));
+// Public pages
+Route::get('/', [LandingController::class, 'index'])->name('landing');
+Route::get('/about', [LandingController::class, 'about'])->name('landing.about');
+Route::get('/services', [LandingController::class, 'services'])->name('landing.services');
+Route::get('/features', [LandingController::class, 'features'])->name('landing.features');
+Route::get('/contact', [LandingController::class, 'contact'])->name('landing.contact');
+Route::get('/pricing', [LandingController::class, 'pricing'])->name('landing.pricing');
+Route::get('/industry', [LandingController::class, 'industry'])->name('landing.industry');
+
+// Review system (public)
+Route::post('/reviews/verify', [LandingController::class, 'verifyToken'])->name('reviews.verify');
+Route::post('/reviews', [LandingController::class, 'storeReview'])->name('reviews.store');
+Route::get('/reviews', [LandingController::class, 'getReviews'])->name('reviews.list');
 
 Route::get('/display', [DisplayController::class, 'screen'])->name('display');
 Route::get('/api/display', [DisplayController::class, 'api'])->name('display.api');

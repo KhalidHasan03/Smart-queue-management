@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Token {{ $token->token_no }} • QueueCare</title>
+<title>Token {{ $token->token_no }} • Queue-Pro</title>
 <style>
     * { box-sizing: border-box; }
     body { font-family: 'Segoe UI', monospace; margin: 0; padding: 16px; color: #0f172a; background: #f1f5f9; }
@@ -21,7 +21,7 @@
 </style></head>
 <body onload="window.print()">
 <div class="ticket">
-    <div class="brand"><span class="logo">Q</span> QueueCare</div>
+    <div class="brand"><span class="logo">Q</span> Queue-Pro</div>
     <div class="clinic">{{ \App\Models\Setting::get('clinic_name', config('app.name')) }}</div>
     <div class="addr">{{ \App\Models\Setting::get('clinic_address', '') }}</div>
     <div class="meta">{{ $token->token_date->format('d M Y') }} • {{ now()->format('h:i A') }}</div>

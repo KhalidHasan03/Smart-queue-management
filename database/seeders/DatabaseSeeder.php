@@ -87,7 +87,7 @@ class DatabaseSeeder extends Seeder
             'is_active' => true,
         ]);
 
-        Setting::updateOrCreate(['key' => 'clinic_name'], ['value' => 'QueueCare Clinic']);
+        Setting::updateOrCreate(['key' => 'clinic_name'], ['value' => 'Queue-Pro Hospital']);
         Setting::updateOrCreate(['key' => 'clinic_address'], ['value' => 'Main Road']);
         Setting::updateOrCreate(['key' => 'token_footer'], ['value' => 'Please wait in waiting area']);
         Setting::updateOrCreate(['key' => 'display.refresh_secs'], ['value' => '4']);

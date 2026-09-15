@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>QueueCare • Live Display</title>
+<title>Queue-Pro • Live Display</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,600,700,800&display=swap" rel="stylesheet" />
 <style>body{font-family:'Plus Jakarta Sans',sans-serif;background:radial-gradient(1200px 600px at 20% -10%,#312e81 0%,transparent 60%),radial-gradient(1000px 500px at 90% 0%,#6d28d9 0%,transparent 55%),#070b1a;color:#fff}
@@ -11,8 +11,8 @@
 <body class="min-h-screen">
 <div class="max-w-7xl mx-auto p-5 sm:p-8">
     <div class="flex flex-wrap items-center justify-between gap-3 pb-5 border-b border-white/10">
-        <div class="flex items-center gap-3"><div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 flex items-center justify-center text-2xl font-extrabold shadow-xl">Q</div>
-        <div><h1 id="clinic" class="text-2xl sm:text-3xl font-extrabold tracking-tight">QueueCare</h1><p class="text-xs text-indigo-200 tracking-widest uppercase">Live serial display • please watch your number</p></div></div>
+        <div class="flex items-center gap-3"><div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-500 flex items-center justify-center text-2xl font-extrabold shadow-xl">Q</div>
+        <div><h1 id="clinic" class="text-2xl sm:text-3xl font-extrabold tracking-tight">Queue-Pro</h1><p class="text-xs text-indigo-200 tracking-widest uppercase">Live serial display • please watch your number</p></div></div>
         <div class="text-right"><p id="date" class="text-indigo-200 text-sm"></p><p id="time" class="text-3xl font-mono font-extrabold"></p></div>
     </div>
     <div id="now" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6"></div>
@@ -26,7 +26,7 @@ function beep(freq=880, t=0.25){ try{ const C = new (window.AudioContext||window
 async function load() {
     try {
         const r = await fetch("{{ route('display.api') }}"); const d = await r.json();
-        document.getElementById('clinic').textContent = d.clinic || 'QueueCare';
+        document.getElementById('clinic').textContent = d.clinic || 'Queue-Pro';
         document.getElementById('date').textContent = d.date; document.getElementById('time').textContent = d.time;
         if (d.ticker) document.getElementById('ticker').textContent = '✦ ' + d.ticker + ' ✦\u00a0';
         const secs = Math.min(30, Math.max(2, parseInt(d.refresh_secs || '4', 10)));

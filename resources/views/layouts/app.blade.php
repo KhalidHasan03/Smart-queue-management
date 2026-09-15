@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name', 'QueueCare') }} — Smart Serial & Queue</title>
+    <title>{{ config('app.name', 'Queue-Pro') }} — Smart Serial & Queue</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap" rel="stylesheet" />
     <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700,800&display=swap" rel="stylesheet" />
@@ -15,8 +15,8 @@
     <div x-show="sidebarOpen" @click="sidebarOpen=false" class="fixed inset-0 bg-slate-900/50 z-20 lg:hidden" x-cloak></div>
     <aside class="fixed lg:static inset-y-0 left-0 z-30 w-[270px] shrink-0 bg-[#0c1222] text-slate-200 flex flex-col transition-transform duration-300" :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
         <div class="px-5 h-[72px] flex items-center gap-3 border-b border-white/10">
-            <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 flex items-center justify-center text-xl font-extrabold text-white shadow-lg shadow-violet-900/50">Q</div>
-            <div><p class="font-extrabold text-white tracking-tight leading-tight">QueueCare</p><p class="text-[11px] text-slate-400 capitalize">{{ \App\Support\Rbac::roleLabel(auth()->user()?->role ?? '') }} • premium</p></div>
+            <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-teal-500 via-teal-400 to-emerald-400 flex items-center justify-center text-xl font-extrabold text-white shadow-lg shadow-teal-900/50">Q</div>
+            <div><p class="font-extrabold text-white tracking-tight leading-tight">Queue-Pro</p><p class="text-[11px] text-slate-400 capitalize">{{ \App\Support\Rbac::roleLabel(auth()->user()?->role ?? '') }} • premium</p></div>
         </div>
         @php $u = auth()->user(); @endphp
         <nav class="flex-1 overflow-y-auto p-4 space-y-1.5">
@@ -79,7 +79,7 @@
                 @if($errors->any())<div class="qc-card !border-red-200 bg-red-50/80 px-4 py-3 text-sm text-red-700"><ul class="list-disc ms-5">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul></div>@endif
             </div>
             {{ $slot }}
-            <p class="text-center text-[11px] text-slate-400 mt-8">QueueCare premium • crafted for fast front-desk & counter flow</p>
+            <p class="text-center text-[11px] text-slate-400 mt-8">Queue-Pro premium • crafted for fast front-desk & counter flow</p>
         </div></main>
     </div>
 </div>
