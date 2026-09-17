@@ -30,6 +30,10 @@ Route::post('/reviews/verify', [LandingController::class, 'verifyToken'])->name(
 Route::post('/reviews', [LandingController::class, 'storeReview'])->name('reviews.store');
 Route::get('/reviews', [LandingController::class, 'getReviews'])->name('reviews.list');
 
+// Contact form
+Route::post('/contact', [LandingController::class, 'submitContact'])->name('contact.submit');
+Route::get('/reviews', [LandingController::class, 'getReviews'])->name('reviews.list');
+
 Route::get('/display', [DisplayController::class, 'screen'])->name('display');
 Route::get('/api/display', [DisplayController::class, 'api'])->name('display.api');
 

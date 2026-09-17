@@ -3,9 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ env('APP_NAME', 'Queue-Pro') }} — Hospital Queue Management</title>
-    <meta name="description" content="Queue-Pro — Smart queue management for hospitals. Reduce wait times, improve patient experience.">
-    <meta property="og:title" content="Queue-Pro — Hospital Queue Management">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{{ config('app.name', 'Queue-Pro') }} — Hospital Queue Management</title>
+    <meta name="description" content="{{ config('app.name', 'Queue-Pro') }} — Smart queue management for hospitals. Reduce wait times, improve patient experience.">
+    <meta property="og:title" content="{{ config('app.name', 'Queue-Pro') }} — Hospital Queue Management">
     <meta property="og:description" content="Smart queue management for modern hospitals.">
     <meta name="robots" content="index, follow">
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -15,8 +16,16 @@
     <style>
         [x-cloak] { display: none !important; }
     </style>
+    <script>
+        (function() {
+            var theme = localStorage.getItem('theme');
+            if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
 </head>
-<body class="antialiased" style="font-family:'Plus Jakarta Sans',Figtree,sans-serif" x-data="{ mobileOpen: false }">
+<body class="antialiased bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300" style="font-family:'Plus Jakarta Sans',Figtree,sans-serif" x-data="{ mobileOpen: false }">
     @include('landing.components.landing-nav')
 
     <main>

@@ -77,7 +77,7 @@ class DisplayController extends Controller
             ->map(fn ($t) => ['token_no' => $t->token_no, 'service' => $t->service->name, 'counter' => $t->counter->name]);
 
         return response()->json([
-            'date' => $today,
+            'date' => Carbon::today()->format('d M Y'),
             'time' => now()->format('h:i:s A'),
             'clinic' => \App\Models\Setting::get('clinic_name', config('app.name')),
             'refresh_secs' => (int) \App\Models\Setting::get('display.refresh_secs', '4'),

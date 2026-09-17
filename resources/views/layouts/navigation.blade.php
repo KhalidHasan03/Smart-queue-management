@@ -37,5 +37,5 @@
 </nav>
 <script>
 (function(){ const el = document.getElementById('qc-clock'); if(!el) return;
-    const tick = () => el.textContent = new Date().toLocaleTimeString(); tick(); setInterval(tick, 1000); })();
+    const tick = () => el.textContent = new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Dhaka' }); tick(); setInterval(tick, 1000); })();
 </script>
