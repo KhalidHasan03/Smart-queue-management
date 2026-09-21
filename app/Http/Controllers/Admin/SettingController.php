@@ -11,6 +11,7 @@ class SettingController extends Controller
     public function edit()
     {
         $settings = Setting::all()->pluck('value', 'key');
+
         return view('admin.settings.edit', compact('settings'));
     }
 
@@ -25,6 +26,7 @@ class SettingController extends Controller
         foreach ($request->only(['clinic_name', 'clinic_address', 'token_header', 'token_footer']) as $k => $v) {
             Setting::set($k, $v);
         }
+
         return back()->with('success', 'Settings saved.');
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Counter;
 use App\Models\Token;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -27,7 +28,7 @@ class DashboardController extends Controller
             ->whereDate('token_date', $today)->orderByDesc('id')->limit(10)->get();
 
         $staffTokens = collect();
-        if ($user->role === \App\Models\User::ROLE_STAFF) {
+        if ($user->role === User::ROLE_STAFF) {
             $staffTokens = Token::with(['patient', 'service', 'doctor', 'counter'])
                 ->whereDate('token_date', $today)
                 ->when($user->service_id, fn ($q) => $q->where('service_id', $user->service_id))

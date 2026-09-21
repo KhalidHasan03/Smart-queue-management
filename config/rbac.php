@@ -27,8 +27,13 @@ return [
         'queue.cancel',
         'display.view',
         'display.manage',
+        'adverts.view',
+        'adverts.manage',
+        'adverts.configure',
         'reports.view',
         'settings.manage',
+        'reviews.view',
+        'reviews.manage',
     ],
 
     'roles' => [
@@ -47,8 +52,10 @@ return [
                 'queue.view', 'queue.next', 'queue.previous', 'queue.skip',
                 'queue.recall', 'queue.complete', 'queue.cancel',
                 'display.view',
+                'adverts.view', 'adverts.manage', 'adverts.configure',
                 'reports.view',
                 'settings.manage',
+                'reviews.view', 'reviews.manage',
             ],
         ],
         'receptionist' => [
@@ -87,6 +94,7 @@ return [
             'permissions' => [
                 'dashboard.view',
                 'display.view', 'display.manage',
+                'adverts.view',
             ],
         ],
     ],

@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Counter;
 use App\Models\Doctor;
+use App\Models\Patient;
 use App\Models\Review;
 use App\Models\Service;
 use App\Models\Setting;
 use App\Models\Token;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -26,6 +26,7 @@ class LandingController extends Controller
     protected function pageContent(string $key, array $default): array
     {
         $raw = Setting::get('page.'.$key);
+
         return $raw ? json_decode($raw, true) : $default;
     }
 
@@ -57,7 +58,7 @@ class LandingController extends Controller
             ]);
 
         $data['totalDoctors'] = Doctor::where('is_active', true)->count();
-        $data['totalPatients'] = \App\Models\Patient::count();
+        $data['totalPatients'] = Patient::count();
         $data['totalTokens'] = Token::whereDate('token_date', $today)->count();
 
         // Dynamic component data
@@ -182,6 +183,7 @@ class LandingController extends Controller
             'cta_title' => 'Ready to modernize your hospital?',
             'cta_description' => 'Start your free 30-day trial today. No card required.',
         ]);
+
         return view('landing.about', $data);
     }
 
@@ -211,6 +213,7 @@ class LandingController extends Controller
             'cta_title' => 'Need a custom solution?',
             'cta_description' => 'We tailor Queue-Pro to fit your hospital\'s exact workflow.',
         ]);
+
         return view('landing.services', $data);
     }
 
@@ -241,6 +244,7 @@ class LandingController extends Controller
             'cta_title' => 'Start using Queue-Pro today.',
             'cta_description' => 'Free 30-day trial. No card required. Cancel anytime.',
         ]);
+
         return view('landing.features', $data);
     }
 
@@ -256,6 +260,7 @@ class LandingController extends Controller
             'phone' => '+962 78 253 3233',
             'phone_link' => 'https://wa.me/962782533233',
         ]);
+
         return view('landing.contact', $data);
     }
 
@@ -299,6 +304,7 @@ class LandingController extends Controller
                 ['q' => 'What happens to my data if I cancel?', 'a' => 'Your data stays available for 30 days after cancellation. You can export everything before that. After 30 days, data is permanently deleted.'],
             ],
         ]);
+
         return view('landing.pricing', $data);
     }
 
@@ -321,6 +327,7 @@ class LandingController extends Controller
             'cta_title' => 'Ready for your industry?',
             'cta_description' => "Queue-Pro adapts to any environment. Let's build your custom solution.",
         ]);
+
         return view('landing.industry', $data);
     }
 
@@ -432,7 +439,7 @@ class LandingController extends Controller
             'message' => 'required|string|max:2000',
         ]);
 
-        \App\Models\Setting::set('contact_submissions.' . now()->timestamp, json_encode([
+        Setting::set('contact_submissions.'.now()->timestamp, json_encode([
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,

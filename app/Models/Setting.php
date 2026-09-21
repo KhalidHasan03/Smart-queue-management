@@ -8,14 +8,19 @@ use Illuminate\Support\Facades\Cache;
 class Setting extends Model
 {
     public $timestamps = false;
+
     public $incrementing = false;
+
     protected $primaryKey = 'key';
+
     protected $keyType = 'string';
+
     protected $fillable = ['key', 'value'];
 
     public static function get(string $key, ?string $default = null): ?string
     {
         $row = static::find($key);
+
         return $row?->value ?? $default;
     }
 

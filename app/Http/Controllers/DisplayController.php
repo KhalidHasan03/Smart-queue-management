@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Advertisement;
 use App\Models\Counter;
+use App\Models\Setting;
 use App\Models\Token;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class DisplayController extends Controller
 {
@@ -17,15 +20,15 @@ class DisplayController extends Controller
     {
         $counters = Counter::with('service')->orderBy('name')->get();
         $settings = [
-            'refresh_secs' => \App\Models\Setting::get('display.refresh_secs', '4'),
-            'ticker' => \App\Models\Setting::get('display.ticker', ''),
-            'show_patient' => \App\Models\Setting::get('display.show_patient', '1'),
+            'refresh_secs' => Setting::get('display.refresh_secs', '4'),
+            'ticker' => Setting::get('display.ticker', ''),
+            'show_patient' => Setting::get('display.show_patient', '1'),
         ];
 
         return view('display.manage', compact('counters', 'settings'));
     }
 
-    public function updateManage(\Illuminate\Http\Request $request)
+    public function updateManage(Request $request)
     {
         $request->validate([
             'visible' => ['nullable', 'array'],
@@ -41,9 +44,9 @@ class DisplayController extends Controller
             Counter::whereIn('id', $visible)->update(['show_on_display' => true]);
         }
 
-        \App\Models\Setting::set('display.refresh_secs', (string) $request->input('refresh_secs'));
-        \App\Models\Setting::set('display.ticker', $request->input('ticker', ''));
-        \App\Models\Setting::set('display.show_patient', $request->boolean('show_patient') ? '1' : '0');
+        Setting::set('display.refresh_secs', (string) $request->input('refresh_secs'));
+        Setting::set('display.ticker', $request->input('ticker', ''));
+        Setting::set('display.show_patient', $request->boolean('show_patient') ? '1' : '0');
 
         return back()->with('success', 'Display settings saved.');
     }
@@ -51,7 +54,7 @@ class DisplayController extends Controller
     public function api()
     {
         $today = Carbon::today()->toDateString();
-        $showPatient = \App\Models\Setting::get('display.show_patient', '1') === '1';
+        $showPatient = Setting::get('display.show_patient', '1') === '1';
         $counters = Counter::with(['service', 'currentToken.patient', 'currentToken.doctor'])
             ->where('is_active', true)->where('show_on_display', true)->orderBy('name')->get();
 
@@ -76,14 +79,38 @@ class DisplayController extends Controller
             ->orderBy('created_at')->limit(8)->get()
             ->map(fn ($t) => ['token_no' => $t->token_no, 'service' => $t->service->name, 'counter' => $t->counter->name]);
 
+        $advertMode = Setting::get('advert.mode', 'cycle');
+        $advertQuery = Advertisement::active()->ordered();
+        if ($advertMode === 'single') {
+            $advertQuery->where('is_live', true);
+        }
+        $advertItems = $advertQuery->limit(12)->get()->map(fn ($a) => [
+            'id' => $a->id,
+            'title' => $a->title,
+            'description' => $a->description,
+            'media_type' => $a->media_type,
+            'image' => $a->media_type === Advertisement::TYPE_IMAGE ? $a->media_url : null,
+            'video' => $a->media_type === Advertisement::TYPE_VIDEO ? $a->media_url : null,
+            'youtube' => $a->media_type === Advertisement::TYPE_YOUTUBE ? $a->youtube_embed_url : null,
+            'text' => $a->media_type === Advertisement::TYPE_TEXT ? $a->description : null,
+            'duration_secs' => $a->duration_secs,
+        ]);
+
         return response()->json([
             'date' => Carbon::today()->format('d M Y'),
             'time' => now()->format('h:i:s A'),
-            'clinic' => \App\Models\Setting::get('clinic_name', config('app.name')),
-            'refresh_secs' => (int) \App\Models\Setting::get('display.refresh_secs', '4'),
-            'ticker' => \App\Models\Setting::get('display.ticker', ''),
+            'clinic' => Setting::get('clinic_name', config('app.name')),
+            'refresh_secs' => (int) Setting::get('display.refresh_secs', '4'),
+            'ticker' => Setting::get('display.ticker', ''),
             'now' => $now,
             'upcoming' => $upcoming,
+            'advert' => [
+                'enabled' => Setting::get('advert.enabled', '1') === '1',
+                'mode' => $advertMode,
+                'duration_secs' => (int) Setting::get('advert.duration_secs', '15'),
+                'position' => Setting::get('advert.position', 'right'),
+                'items' => $advertItems,
+            ],
         ]);
     }
 }

@@ -106,7 +106,12 @@ class QueueService
             if (! in_array($token->status, [Token::CALLING, Token::SERVING], true)) {
                 throw ValidationException::withMessages(['token' => 'Only calling/serving tokens can complete.']);
             }
-            $token->update(['status' => Token::COMPLETED, 'finished_at' => now()]);
+            $token->update([
+                'status' => Token::COMPLETED,
+                'finished_at' => now(),
+                'review_status' => 'pending',
+                'review_requested_at' => now(),
+            ]);
             if ((int) $counter->current_token_id === (int) $token->id) {
                 $counter->update(['current_token_id' => null]);
             }

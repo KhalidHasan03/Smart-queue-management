@@ -34,6 +34,21 @@
         <div class="row"><span>Counter</span><b>{{ $token->counter->name }}@if($token->counter->room_no) / R-{{ $token->counter->room_no }}@endif</b></div>
     </div>
     <div class="footer">{{ \App\Models\Setting::get('token_footer', 'Please wait in waiting area') }}</div>
+    @if($token->status === \App\Models\Token::COMPLETED && $token->canBeReviewed())
+        <div class="noprint" style="margin-top: 8px;">
+            <a href="{{ route('review.show', $token->token_no) }}"
+               style="display: inline-block; font-size: 12px; font-weight: 700; border-radius: 8px; padding: 6px 12px; background: #059669; color: #fff; text-decoration: none;">
+                ⭐ Rate Your Visit
+            </a>
+        </div>
+    @elseif($token->status === \App\Models\Token::COMPLETED && $token->review?->exists)
+        <div class="noprint" style="margin-top: 8px;">
+            <a href="{{ route('review.success', $token->token_no) }}"
+               style="display: inline-block; font-size: 12px; font-weight: 700; border-radius: 8px; padding: 6px 12px; background: #6366f1; color: #fff; text-decoration: none;">
+                📝 View Your Review
+            </a>
+        </div>
+    @endif
     <div class="noprint"><button onclick="window.print()">🖨 Reprint</button><a href="{{ route('tokens.show', $token) }}">← Back</a></div>
 </div>
 </body></html>

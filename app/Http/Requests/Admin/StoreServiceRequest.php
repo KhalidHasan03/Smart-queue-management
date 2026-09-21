@@ -14,6 +14,7 @@ class StoreServiceRequest extends FormRequest
     public function rules(): array
     {
         $id = $this->route('service')?->id;
+
         return [
             'name' => ['required', 'string', 'max:255', 'unique:services,name,'.$id],
             'prefix' => ['required', 'string', 'max:5', 'alpha', 'unique:services,prefix,'.$id],

@@ -13,12 +13,14 @@ class CounterController extends Controller
     public function index()
     {
         $counters = Counter::with(['service', 'currentToken'])->orderBy('name')->paginate(15);
+
         return view('admin.counters.index', compact('counters'));
     }
 
     public function create()
     {
         $services = Service::where('is_active', true)->orderBy('name')->get();
+
         return view('admin.counters.create', compact('services'));
     }
 
@@ -28,6 +30,7 @@ class CounterController extends Controller
             'is_active' => $request->boolean('is_active', true),
             'show_on_display' => $request->boolean('show_on_display', true),
         ]);
+
         return redirect()->route('admin.counters.index')->with('success', 'Counter created.');
     }
 
@@ -35,6 +38,7 @@ class CounterController extends Controller
     {
         $services = Service::where('is_active', true)->orderBy('name')->get();
         $operators = User::where('role', User::ROLE_OPERATOR)->orderBy('name')->get();
+
         return view('admin.counters.edit', compact('counter', 'services', 'operators'));
     }
 
@@ -54,6 +58,7 @@ class CounterController extends Controller
             User::where('counter_id', $counter->id)->update(['counter_id' => null]);
             User::whereIn('id', $ids)->update(['counter_id' => $counter->id]);
         }
+
         return redirect()->route('admin.counters.index')->with('success', 'Counter updated.');
     }
 
@@ -63,6 +68,7 @@ class CounterController extends Controller
             return back()->with('error', 'Unassign operators first.');
         }
         $counter->delete();
+
         return redirect()->route('admin.counters.index')->with('success', 'Counter deleted.');
     }
 }

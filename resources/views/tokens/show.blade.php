@@ -10,6 +10,11 @@
             <div class="flex gap-2 justify-center mt-6">
                 <a href="{{ route('tokens.print', $token) }}" target="_blank" class="qc-btn-dark">🖨 Print</a>
                 <a href="{{ route('tokens.create') }}" class="qc-btn-primary">+ New</a>
+                @if($token->status === \App\Models\Token::COMPLETED && $token->canBeReviewed())
+                    <a href="{{ route('review.show', $token->token_no) }}" class="qc-btn-success">⭐ Leave Review</a>
+                @elseif($token->status === \App\Models\Token::COMPLETED && $token->review?->exists)
+                    <a href="{{ route('review.success', $token->token_no) }}" class="qc-btn-secondary">📝 View Review</a>
+                @endif
             </div>
         </div>
         <div class="qc-card p-6 text-sm space-y-3">

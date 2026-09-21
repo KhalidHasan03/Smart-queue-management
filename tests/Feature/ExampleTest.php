@@ -2,18 +2,27 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
-    /**
-     * A basic test example.
-     */
-    public function test_the_application_returns_a_successful_response(): void
+    public function test_patient_display_screen_renders_queue_and_advert_panes(): void
     {
-        $response = $this->get('/');
+        $this->get('/display')
+            ->assertOk()
+            ->assertSee('Queue-Pro', false)
+            ->assertSee('advert', false)
+            ->assertSee('upcoming', false)
+            ->assertSee('serial', false);
+    }
 
-        $response->assertRedirect('/dashboard');
+    public function test_display_api_returns_advert_payload(): void
+    {
+        $r = $this->getJson('/api/display')->assertOk()->json();
+
+        $this->assertArrayHasKey('advert', $r);
+        $this->assertArrayHasKey('items', $r['advert']);
+        $this->assertArrayHasKey('enabled', $r['advert']);
+        $this->assertArrayHasKey('mode', $r['advert']);
     }
 }

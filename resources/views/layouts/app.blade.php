@@ -37,6 +37,9 @@
             @if($u?->hasPermission('display.manage'))
             <a href="{{ route('display.manage') }}" class="qc-navlink {{ request()->routeIs('display.manage') ? 'qc-navlink-active' : '' }}"><span>🖥️</span> Display Setup</a>
             @endif
+            @if($u?->hasPermission('adverts.view'))
+            <a href="{{ route('admin.advertisements.index') }}" class="qc-navlink {{ request()->routeIs('admin.advertisements.*') ? 'qc-navlink-active' : '' }}"><span>📢</span> Advertisements</a>
+            @endif
             @if($u?->hasPermission('services.manage') || $u?->hasPermission('counters.manage') || $u?->hasPermission('users.view') || $u?->hasPermission('reports.view') || $u?->hasPermission('settings.manage') || $u?->hasPermission('roles.manage'))
             <p class="px-3 pt-5 pb-1 text-[11px] font-bold uppercase tracking-widest text-slate-500">Manage</p>
             @endif

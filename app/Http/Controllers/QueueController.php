@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Token;
+use App\Models\User;
 use App\Services\QueueService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class QueueController extends Controller
 {
@@ -19,7 +21,7 @@ class QueueController extends Controller
         $counter = $user->counter()->with('service')->first();
         $today = Carbon::today()->toDateString();
 
-        if (! $counter && $user->role === \App\Models\User::ROLE_OPERATOR) {
+        if (! $counter && $user->role === User::ROLE_OPERATOR) {
             return view('queue.index', [
                 'counter' => null, 'current' => null, 'previous' => null,
                 'waiting' => collect(), 'done' => collect(),
@@ -61,8 +63,9 @@ class QueueController extends Controller
     {
         try {
             $token = $queue->next($request->user());
+
             return back()->with('success', 'Calling '.$token->token_no);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return back()->with('error', collect($e->errors())->flatten()->first());
         }
     }
@@ -76,7 +79,7 @@ class QueueController extends Controller
             }
 
             return back()->with('success', 'Previous token: '.$token->token_no.' ('.$token->status.')');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return back()->with('error', collect($e->errors())->flatten()->first());
         }
     }
@@ -105,7 +108,7 @@ class QueueController extends Controller
             };
 
             return back()->with('success', ucfirst($action).' done: '.$token->token_no);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return back()->with('error', collect($e->errors())->flatten()->first());
         } catch (\Throwable $e) {
             return back()->with('error', $e->getMessage());

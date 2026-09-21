@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminReviewController;
+use App\Http\Controllers\Admin\AdvertisementController;
 use App\Http\Controllers\Admin\CounterController;
 use App\Http\Controllers\Admin\DoctorController;
 use App\Http\Controllers\Admin\RoleController;
@@ -12,6 +14,7 @@ use App\Http\Controllers\LandingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QueueController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TokenController;
 use Illuminate\Support\Facades\Route;
@@ -29,6 +32,11 @@ Route::get('/industry', [LandingController::class, 'industry'])->name('landing.i
 Route::post('/reviews/verify', [LandingController::class, 'verifyToken'])->name('reviews.verify');
 Route::post('/reviews', [LandingController::class, 'storeReview'])->name('reviews.store');
 Route::get('/reviews', [LandingController::class, 'getReviews'])->name('reviews.list');
+
+// Public Review Routes (post-completion)
+Route::get('/review/{token}', [ReviewController::class, 'show'])->name('review.show');
+Route::post('/review/{token}', [ReviewController::class, 'store'])->name('review.store');
+Route::get('/review/{token}/success', [ReviewController::class, 'success'])->name('review.success');
 
 // Contact form
 Route::post('/contact', [LandingController::class, 'submitContact'])->name('contact.submit');
@@ -107,6 +115,33 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
     Route::middleware('permission:settings.manage')->group(function () {
         Route::get('/admin/settings', [SettingController::class, 'edit'])->name('admin.settings.edit');
         Route::put('/admin/settings', [SettingController::class, 'update'])->name('admin.settings.update');
+    });
+
+    Route::middleware('permission:adverts.view')->group(function () {
+        // Form (index playlists + settings) is group-viewable; management actions sit
+        // behind adverts.manage / adverts.configure so access can be granted narrowly.
+        Route::get('/admin/advertisements', [AdvertisementController::class, 'index'])->name('admin.advertisements.index');
+        Route::get('/admin/advertisements/settings', [AdvertisementController::class, 'settings'])->name('admin.advertisements.settings');
+        Route::patch('/admin/advertisements/settings', [AdvertisementController::class, 'updateSettings'])->name('admin.advertisements.settings.update');
+    });
+    Route::middleware('permission:adverts.manage')->group(function () {
+        Route::get('/admin/advertisements/create', [AdvertisementController::class, 'create'])->name('admin.advertisements.create');
+        Route::post('/admin/advertisements', [AdvertisementController::class, 'store'])->name('admin.advertisements.store');
+        Route::get('/admin/advertisements/{advertisement}/edit', [AdvertisementController::class, 'edit'])->name('admin.advertisements.edit');
+        Route::put('/admin/advertisements/{advertisement}', [AdvertisementController::class, 'update'])->name('admin.advertisements.update');
+        Route::delete('/admin/advertisements/{advertisement}', [AdvertisementController::class, 'destroy'])->name('admin.advertisements.destroy');
+        Route::post('/admin/advertisements/{advertisement}/toggle', [AdvertisementController::class, 'toggle'])->name('admin.advertisements.toggle');
+        Route::post('/admin/advertisements/{advertisement}/live', [AdvertisementController::class, 'setLive'])->name('admin.advertisements.live');
+        Route::post('/admin/advertisements/reorder', [AdvertisementController::class, 'reorder'])->name('admin.advertisements.reorder');
+    });
+
+    Route::middleware('permission:reviews.view')->group(function () {
+        Route::get('/admin/reviews', [AdminReviewController::class, 'index'])->name('admin.reviews.index');
+        Route::get('/admin/reviews/export', [AdminReviewController::class, 'export'])->name('admin.reviews.export');
+        Route::get('/admin/reviews/{review}', [AdminReviewController::class, 'show'])->name('admin.reviews.show');
+        Route::patch('/admin/reviews/{review}/approve', [AdminReviewController::class, 'approve'])->name('admin.reviews.approve');
+        Route::patch('/admin/reviews/{review}/reject', [AdminReviewController::class, 'reject'])->name('admin.reviews.reject');
+        Route::delete('/admin/reviews/{review}', [AdminReviewController::class, 'destroy'])->name('admin.reviews.destroy');
     });
 });
 

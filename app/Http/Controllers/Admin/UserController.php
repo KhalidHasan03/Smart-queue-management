@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
+use App\Models\Counter;
+use App\Models\Doctor;
+use App\Models\Service;
 use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
@@ -24,9 +27,9 @@ class UserController extends Controller
     {
         $this->authorize('create', User::class);
         $roles = User::assignableRoles(auth()->user());
-        $counters = \App\Models\Counter::with('service')->orderBy('name')->get();
-        $services = \App\Models\Service::orderBy('name')->get();
-        $doctors = \App\Models\Doctor::orderBy('name')->get();
+        $counters = Counter::with('service')->orderBy('name')->get();
+        $services = Service::orderBy('name')->get();
+        $doctors = Doctor::orderBy('name')->get();
 
         return view('admin.users.create', compact('roles', 'counters', 'services', 'doctors'));
     }
@@ -44,9 +47,9 @@ class UserController extends Controller
     {
         $this->authorize('update', $user);
         $roles = User::assignableRoles(auth()->user());
-        $counters = \App\Models\Counter::with('service')->orderBy('name')->get();
-        $services = \App\Models\Service::orderBy('name')->get();
-        $doctors = \App\Models\Doctor::orderBy('name')->get();
+        $counters = Counter::with('service')->orderBy('name')->get();
+        $services = Service::orderBy('name')->get();
+        $doctors = Doctor::orderBy('name')->get();
 
         return view('admin.users.edit', compact('user', 'roles', 'counters', 'services', 'doctors'));
     }

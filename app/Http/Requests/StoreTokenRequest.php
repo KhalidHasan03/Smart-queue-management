@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Patient;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreTokenRequest extends FormRequest
@@ -14,7 +15,7 @@ class StoreTokenRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         if ($this->has('phone') && is_string($this->input('phone'))) {
-            $this->merge(['phone' => \App\Models\Patient::normalizePhone($this->input('phone'))]);
+            $this->merge(['phone' => Patient::normalizePhone($this->input('phone'))]);
         }
     }
 

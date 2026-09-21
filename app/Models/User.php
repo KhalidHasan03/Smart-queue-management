@@ -12,10 +12,15 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     public const ROLE_SUPER_ADMIN = 'super_admin';
+
     public const ROLE_ADMIN = 'admin';
+
     public const ROLE_RECEPTIONIST = 'receptionist';
+
     public const ROLE_OPERATOR = 'operator';
+
     public const ROLE_STAFF = 'staff';
+
     public const ROLE_DISPLAY_OPERATOR = 'display_operator';
 
     public const ROLES = [

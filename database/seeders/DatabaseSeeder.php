@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Advertisement;
 use App\Models\Counter;
 use App\Models\Doctor;
 use App\Models\Service;
@@ -93,6 +94,19 @@ class DatabaseSeeder extends Seeder
         Setting::updateOrCreate(['key' => 'display.refresh_secs'], ['value' => '4']);
         Setting::updateOrCreate(['key' => 'display.ticker'], ['value' => 'Please keep your token with you']);
         Setting::updateOrCreate(['key' => 'display.show_patient'], ['value' => '1']);
+
+        Setting::updateOrCreate(['key' => 'advert.enabled'], ['value' => '1']);
+        Setting::updateOrCreate(['key' => 'advert.mode'], ['value' => 'cycle']);
+        Setting::updateOrCreate(['key' => 'advert.duration_secs'], ['value' => '12']);
+        Setting::updateOrCreate(['key' => 'advert.position'], ['value' => 'right']);
+
+        Advertisement::firstOrCreate(['title' => 'Welcome to Queue-Pro'], [
+            'description' => 'Thank you for choosing our hospital. Please keep your token with you and watch the display for your number.',
+            'media_type' => Advertisement::TYPE_TEXT,
+            'is_active' => true,
+            'is_live' => true,
+            'sort_order' => 0,
+        ]);
 
         // Page content (dynamic landing pages)
         Setting::updateOrCreate(['key' => 'page.features'], ['value' => json_encode([

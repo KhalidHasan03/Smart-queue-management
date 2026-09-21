@@ -2,21 +2,27 @@
 
 namespace Tests\Feature;
 
+use App\Models\Doctor;
 use App\Models\Patient;
+use App\Models\Service;
+use App\Models\Token;
 use App\Models\User;
 use App\Services\TokenService;
+use Database\Seeders\DatabaseSeeder;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class PatientPhoneTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function issueAs(string $name, string $phone): \App\Models\Token
+    private function issueAs(string $name, string $phone): Token
     {
-        $this->seed(\Database\Seeders\DatabaseSeeder::class);
-        $service = \App\Models\Service::firstOrFail();
-        $doctor = \App\Models\Doctor::where('service_id', $service->id)->firstOrFail();
+        $this->seed(DatabaseSeeder::class);
+        $service = Service::firstOrFail();
+        $doctor = Doctor::where('service_id', $service->id)->firstOrFail();
         $admin = User::where('email', 'admin@queuecare.local')->firstOrFail();
 
         return (new TokenService)->issue(
@@ -55,7 +61,7 @@ class PatientPhoneTest extends TestCase
                 $t1->created_by
             );
             $this->fail('Expected number-already-exists rejection.');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             $this->assertStringContainsString('already exists', collect($e->errors())->flatten()->first());
         }
 
@@ -66,8 +72,8 @@ class PatientPhoneTest extends TestCase
     public function test_phone_formats_normalize_to_same_patient(): void
     {
         $t1 = $this->issueAs('Ayesha Begum', '01700000022');
-        $service = \App\Models\Service::firstOrFail();
-        $doctor = \App\Models\Doctor::where('service_id', $service->id)->firstOrFail();
+        $service = Service::firstOrFail();
+        $doctor = Doctor::where('service_id', $service->id)->firstOrFail();
         $t2 = (new TokenService)->issue(
             ['name' => 'ayesha begum', 'phone' => '01 700-000022'],
             $service->id,
@@ -81,9 +87,9 @@ class PatientPhoneTest extends TestCase
 
     public function test_duplicate_phone_rejected_at_database(): void
     {
-        $this->seed(\Database\Seeders\DatabaseSeeder::class);
+        $this->seed(DatabaseSeeder::class);
         Patient::create(['name' => 'X', 'phone' => '01700000033']);
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
         Patient::create(['name' => 'Y', 'phone' => '01700000033']);
     }
 

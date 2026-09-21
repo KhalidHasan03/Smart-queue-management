@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Support\Rbac;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -12,7 +14,7 @@ class RbacMatrixTest extends TestCase
 
     private function login(string $email)
     {
-        $this->seed(\Database\Seeders\DatabaseSeeder::class);
+        $this->seed(DatabaseSeeder::class);
 
         return User::where('email', $email)->firstOrFail();
     }
@@ -98,7 +100,7 @@ class RbacMatrixTest extends TestCase
         $su = $this->login('superadmin@queuecare.local');
         $this->actingAs($su)->get(route('admin.roles.index'))->assertOk();
 
-        $recPerms = \App\Support\Rbac::rolePermissions('receptionist');
+        $recPerms = Rbac::rolePermissions('receptionist');
         $this->assertContains('reports.view', $recPerms);
 
         $stripped = array_values(array_diff($recPerms, ['reports.view']));
@@ -125,7 +127,7 @@ class RbacMatrixTest extends TestCase
 
     public function test_existing_users_migrated_without_data_loss(): void
     {
-        $this->seed(\Database\Seeders\DatabaseSeeder::class);
+        $this->seed(DatabaseSeeder::class);
         foreach (['admin@queuecare.local', 'reception@queuecare.local', 'operator@queuecare.local'] as $email) {
             $this->assertNotNull(User::where('email', $email)->first(), $email);
         }

@@ -11,6 +11,7 @@ class ServiceController extends Controller
     public function index()
     {
         $services = Service::orderBy('name')->paginate(15);
+
         return view('admin.services.index', compact('services'));
     }
 
@@ -22,6 +23,7 @@ class ServiceController extends Controller
     public function store(StoreServiceRequest $request)
     {
         Service::create($request->validated() + ['is_active' => $request->boolean('is_active', true)]);
+
         return redirect()->route('admin.services.index')->with('success', 'Service created.');
     }
 
@@ -33,6 +35,7 @@ class ServiceController extends Controller
     public function update(StoreServiceRequest $request, Service $service)
     {
         $service->update($request->validated() + ['is_active' => $request->boolean('is_active')]);
+
         return redirect()->route('admin.services.index')->with('success', 'Service updated.');
     }
 
@@ -42,6 +45,7 @@ class ServiceController extends Controller
             return back()->with('error', 'Cannot delete: tokens exist for this service.');
         }
         $service->delete();
+
         return redirect()->route('admin.services.index')->with('success', 'Service deleted.');
     }
 }

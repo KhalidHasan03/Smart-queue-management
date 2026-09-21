@@ -14,6 +14,7 @@ class StoreCounterRequest extends FormRequest
     public function rules(): array
     {
         $id = $this->route('counter')?->id;
+
         return [
             'name' => ['required', 'string', 'max:255', 'unique:counters,name,'.$id],
             'room_no' => ['nullable', 'string', 'max:50'],

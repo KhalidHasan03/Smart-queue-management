@@ -10,13 +10,16 @@ class Review extends Model
         'token_id',
         'patient_id',
         'rating',
+        'category',
         'comment',
         'display_name',
+        'is_anonymous',
         'is_approved',
     ];
 
     protected $casts = [
         'is_approved' => 'boolean',
+        'is_anonymous' => 'boolean',
     ];
 
     public function token()

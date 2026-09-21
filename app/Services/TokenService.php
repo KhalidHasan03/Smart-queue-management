@@ -8,6 +8,7 @@ use App\Models\Patient;
 use App\Models\Service;
 use App\Models\Token;
 use Carbon\Carbon;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -41,7 +42,7 @@ class TokenService
             } else {
                 try {
                     $patient = Patient::create($patientData);
-                } catch (\Illuminate\Database\QueryException $e) {
+                } catch (QueryException $e) {
                     $existing = Patient::where('phone', $phone)->lockForUpdate()->first();
                     if (! $existing) {
                         throw $e;
