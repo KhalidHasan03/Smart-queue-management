@@ -23,7 +23,7 @@
         <div class="qc-card p-6 space-y-4 h-fit">
             <h3 class="font-bold">Screen options</h3>
             <div><label class="qc-label">Refresh every (seconds)</label><input name="refresh_secs" type="number" min="2" max="30" value="{{ old('refresh_secs', $settings['refresh_secs']) }}" class="qc-input mt-1"></div>
-            <div><label class="qc-label">Ticker message</label><input name="ticker" value="{{ old('ticker', $settings['ticker']) }}" placeholder="Shown scrolling on the TV" class="qc-input mt-1"></div>
+            <div><label class="qc-label">Notice / announcement</label><input name="ticker" value="{{ old('ticker', $settings['ticker']) }}" placeholder="Shown in the Notice panel on the TV" class="qc-input mt-1"></div>
             <label class="text-sm font-semibold flex gap-2 items-center"><input type="checkbox" name="show_patient" value="1" @checked(old('show_patient', $settings['show_patient'] === '1')) class="w-4 h-4 accent-indigo-600"> Show patient names on TV</label>
             <button class="qc-btn-primary w-full">Save display setup</button>
         </div>

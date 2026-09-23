@@ -23,6 +23,7 @@ class Advertisement extends Model
         'media_type',
         'media_path',
         'youtube_url',
+        'youtube_embed',
         'duration_secs',
         'is_active',
         'is_live',
@@ -44,7 +45,19 @@ class Advertisement extends Model
     public function getYoutubeEmbedUrlAttribute(): ?string
     {
         return $this->youtube_id
-            ? 'https://www.youtube.com/embed/'.$this->youtube_id.'?rel=0'
+            ? 'https://www.youtube.com/embed/'.$this->youtube_id.'?rel=0&autoplay=1&mute=1&playsinline=1'
+            : null;
+    }
+
+    public function getHasEmbedAttribute(): bool
+    {
+        return $this->media_type === self::TYPE_YOUTUBE && ! empty($this->youtube_embed);
+    }
+
+    public function getYoutubeThumbnailAttribute(): ?string
+    {
+        return $this->youtube_id
+            ? 'https://i.ytimg.com/vi/'.$this->youtube_id.'/hqdefault.jpg'
             : null;
     }
 
@@ -59,11 +72,57 @@ class Advertisement extends Model
             return null;
         }
 
-        if (preg_match('~(?:youtube\.com/(?:watch\?v=|embed/|shorts/|live/|v/)|youtu\.be/)([A-Za-z0-9_-]{6,})~', $url, $m)) {
+        if (preg_match('~(?:youtube(?:-nocookie)?\.com/(?:watch\?v=|embed/|shorts/|live/|v/)|youtu\.be/)([A-Za-z0-9_-]{6,})~', $url, $m)) {
             return $m[1];
         }
 
         return null;
+    }
+
+    /**
+     * Accept either a plain YouTube URL or a full <iframe> embed snippet and
+     * return a safe, normalized pair. Only YouTube-hosted video sources are
+     * allowed; the embed code is rebuilt from the extracted video id so no
+     * attribute the admin pastes ever reaches the rendered HTML.
+     *
+     * @return array{url: string, embed: string}|null
+     */
+    public static function sanitizeEmbedFromInput(?string $input): ?array
+    {
+        if ($input === null) {
+            return null;
+        }
+
+        $input = trim($input);
+
+        if ($input === '') {
+            return null;
+        }
+
+        $src = $input;
+
+        if (stripos($input, '<iframe') !== false) {
+            if (! preg_match('/<iframe\b[^>]*\bsrc\s*=\s*(["\'])(.*?)\1[^>]*>/is', $input, $m)) {
+                return null;
+            }
+            $src = html_entity_decode($m[2], ENT_QUOTES | ENT_HTML5);
+        }
+
+        $videoId = self::youtubeIdFromUrl($src);
+
+        if (! $videoId) {
+            return null;
+        }
+
+        $embedUrl = 'https://www.youtube-nocookie.com/embed/'.$videoId.'?rel=0&autoplay=1&mute=1&playsinline=1';
+
+        return [
+            'url' => 'https://www.youtube.com/watch?v='.$videoId,
+            'embed' => sprintf(
+                '<iframe src="%s" style="border:0;width:100%%;height:100%%;aspect-ratio:16/9" class="h-full w-full" title="YouTube video" allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>',
+                $embedUrl
+            ),
+        ];
     }
 
     protected function getMediaTypeLabelAttribute(): string

@@ -5,76 +5,151 @@
 <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,600,700,800&display=swap" rel="stylesheet" />
 <style>body{font-family:'Plus Jakarta Sans',sans-serif;background:radial-gradient(1200px 600px at 20% -10%,#312e81 0%,transparent 60%),radial-gradient(1000px 500px at 90% 0%,#6d28d9 0%,transparent 55%),#070b1a;color:#fff}
 .flash{animation:flash 1.1s infinite}@keyframes flash{50%{opacity:.55}}
-.ticker{animation:slide 22s linear infinite}@keyframes slide{from{transform:translateX(20%)}to{transform:translateX(-100%)}}
+.ticker{animation:slide 26s linear infinite}@keyframes slide{from{transform:translateX(20%)}to{transform:translateX(-100%)}}
 .card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(12px)}
 </style>
 </head>
 <body class="min-h-screen">
-<div class="max-w-7xl mx-auto p-5 sm:p-8">
-    <div class="flex flex-wrap items-center justify-between gap-3 pb-5 border-b border-white/10">
+<div class="max-w-[1700px] mx-auto w-full min-h-screen flex flex-col p-4 sm:p-6 gap-4">
+    <header class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
         <div class="flex items-center gap-3"><div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-500 flex items-center justify-center text-2xl font-extrabold shadow-xl">Q</div>
         <div><h1 id="clinic" class="text-2xl sm:text-3xl font-extrabold tracking-tight">Queue-Pro</h1><p class="text-xs text-indigo-200 tracking-widest uppercase">Live serial display • please watch your number</p></div></div>
         <div class="text-right"><p id="date" class="text-indigo-200 text-sm"></p><p id="time" class="text-3xl font-mono font-extrabold"></p></div>
-    </div>
+    </header>
 
-    <div class="grid md:grid-cols-10 gap-5 mt-6">
-        <div class="md:col-span-6">
-            <div id="now" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-            <div class="card rounded-2xl mt-6 p-5"><h2 class="text-sm font-bold uppercase tracking-widest text-indigo-200">Up next in queue</h2><div id="upcoming" class="flex flex-wrap gap-3 mt-3"></div></div>
-            <div class="overflow-hidden mt-4 text-indigo-200/70 text-sm"><div id="ticker" class="ticker whitespace-nowrap">✦ Please keep your token with you ✦&nbsp;</div></div>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0 items-stretch">
+        <div class="lg:col-span-4 grid grid-cols-1 gap-4 min-h-0 lg:grid-rows-[minmax(0,3fr)_minmax(0,2fr)]">
+            <section class="card rounded-2xl overflow-hidden flex flex-col min-h-0">
+                <div class="flex items-center justify-between px-5 py-3 bg-white/5 border-b border-white/10">
+                    <h2 class="text-[11px] sm:text-sm font-bold uppercase tracking-widest text-indigo-200">Recent Display</h2>
+                    <span class="text-[10px] sm:text-xs text-white/40">Live counters</span>
+                </div>
+                <div class="flex-1 overflow-auto min-h-0">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="sticky top-0">
+                        <tr class="bg-white/10 border-b border-white/10 text-[10px] uppercase tracking-widest text-indigo-200">
+                            <th class="px-5 py-3">Counter</th>
+                            <th class="px-5 py-3">Token</th>
+                            <th class="px-5 py-3">Status</th>
+                        </tr>
+                        </thead>
+                        <tbody id="nowTable"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="card rounded-2xl p-5 flex flex-col min-h-0 overflow-auto">
+                <h2 class="text-[11px] sm:text-sm font-bold uppercase tracking-widest text-indigo-200 mb-3">Upcoming in Queue</h2>
+                <div id="upcoming" class="flex flex-wrap gap-3 flex-1 items-start"></div>
+            </section>
         </div>
-        <aside class="md:col-span-4 card rounded-2xl overflow-hidden self-start min-h-[320px]" id="advertPane">
-            <div class="flex items-center justify-between px-5 py-3 bg-white/5 border-b border-white/10"><span class="text-xs font-bold uppercase tracking-widest text-indigo-200">Advertisement</span><span id="advertIndex" class="text-xs text-white/40 font-mono"></span></div>
-            <div id="advert" class="h-[26rem]"></div>
+
+        <aside class="lg:col-span-8 card rounded-2xl overflow-hidden flex flex-col min-h-0">
+            <div class="flex items-center justify-between px-5 py-3 bg-white/5 border-b border-white/10">
+                <h2 class="text-sm font-bold uppercase tracking-widest text-indigo-200">Advertisement</h2>
+                <span id="advertIndex" class="text-xs text-white/40 font-mono"></span>
+            </div>
+            <div id="advert" class="flex-1 min-h-[240px]"></div>
         </aside>
+
+        <section class="lg:col-span-12 card rounded-2xl p-4 flex flex-col min-h-0 overflow-hidden">
+            <h2 class="text-[11px] sm:text-sm font-bold uppercase tracking-widest text-indigo-200 mb-2">Notice</h2>
+            <div class="flex-1 flex items-center overflow-hidden min-h-0">
+                <div id="notice" class="ticker whitespace-nowrap text-base sm:text-lg">✦ Please keep your token with you ✦&nbsp;</div>
+            </div>
+        </section>
     </div>
 </div>
 <script>
-let lastSig = '', advertTimer = null, advertIdx = 0;
+const STATUS_PILLS = {
+    waiting:   { label:'Waiting',   cls:'bg-amber-400/15 text-amber-300 border-amber-300/30' },
+    calling:   { label:'Calling',   cls:'bg-blue-400/15 text-blue-300 border-blue-300/40 animate-pulse' },
+    serving:   { label:'Serving',   cls:'bg-teal-400/15 text-teal-300 border-teal-300/40' },
+    completed: { label:'Completed', cls:'bg-emerald-400/15 text-emerald-300 border-emerald-300/30' },
+    skipped:   { label:'Skipped',   cls:'bg-orange-400/15 text-orange-300 border-orange-300/30' },
+    cancelled: { label:'Cancelled', cls:'bg-red-400/15 text-red-300 border-red-300/30' },
+};
+let lastSig = '', lastAdvertSig = '', advertTimer = null, advertIdx = 0;
 function beep(freq=880, t=0.25){ try{ const C = new (window.AudioContext||window.webkitAudioContext)(); const o = C.createOscillator(), g = C.createGain();
     o.connect(g); g.connect(C.destination); o.frequency.value = freq; o.type='sine'; g.gain.value=0.12; o.start(); o.stop(C.currentTime+t);}catch(e){} }
+function renderNow(list){
+    const tbody = document.getElementById('nowTable');
+    if(!list || !list.length){ tbody.innerHTML = '<tr><td colspan="3" class="px-5 py-8 text-center text-white/35">No counters on display yet.</td></tr>'; return; }
+    tbody.innerHTML = list.map(n => {
+        const st = STATUS_PILLS[n.status] || {};
+        const token = n.token_no
+            ? `<span class="text-2xl sm:text-3xl font-mono font-extrabold tracking-tight break-all ${n.is_live ? 'flash text-emerald-300' : 'text-white'}">${n.token_no}</span>`
+            : '<span class="text-2xl sm:text-3xl font-mono font-extrabold text-white/20">–––</span>';
+        const status = n.token_no
+            ? `<span class="inline-block border px-3 py-1 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wider ${st.cls || 'bg-white/10 text-white/70 border-white/20'}">${st.label || n.status_label || n.status}</span>`
+            : '<span class="text-xs text-white/25">No token yet</span>';
+        const meta = [n.room ? 'Room '+n.room : '', n.service].filter(Boolean).join(' • ');
+        return `<tr class="border-b border-white/5 ${n.is_live ? 'bg-emerald-400/5' : ''}">
+            <td class="px-5 py-3"><div class="font-bold text-base sm:text-lg break-words">${n.counter}</div>${meta ? '<div class="text-[10px] sm:text-xs text-indigo-200/70 break-words">'+meta+'</div>' : ''}</td>
+            <td class="px-5 py-3">${token}</td>
+            <td class="px-5 py-3">${status}</td>
+        </tr>`;
+    }).join('');
+}
+function renderUpcoming(list){
+    const el = document.getElementById('upcoming');
+    el.innerHTML = list.length
+        ? list.map(u => `<span class="bg-white/10 border border-white/15 px-4 py-2 rounded-xl text-center shrink-0"><span class="block text-xl sm:text-2xl font-mono font-extrabold break-all">${u.token_no}</span>${u.counter ? '<span class="block text-[11px] text-indigo-200/70 mt-0.5 break-words">'+u.counter+'</span>' : ''}</span>`).join('')
+        : '<span class="text-white/40">Queue clear — no waiting tokens 🎉</span>';
+}
 function renderAdvert(a){
     const pane = document.getElementById('advert');
-    if(!a || !a.enabled || !a.items || !a.items.length){ pane.innerHTML = '<div class="flex h-full flex-col items-center justify-center text-center p-6 text-white/35"><div class="text-4xl font-extrabold">A</div><p class="mt-2 text-sm">No advertisement scheduled<br>by admin</p></div>'; document.getElementById('advertIndex').textContent=''; return; }
+    if(!a || !a.enabled || !a.items || !a.items.length){ pane.innerHTML = '<div class="flex h-full w-full flex-col items-center justify-center text-center p-6 text-white/35"><div class="text-4xl font-extrabold">A</div><p class="mt-2 text-sm">No advertisement scheduled<br>by admin</p></div>'; document.getElementById('advertIndex').textContent=''; return; }
     const item = a.items[advertIdx % a.items.length];
     pane.innerHTML = item.media_type === 'text'
-        ? `<div class="flex h-full items-center justify-center text-center p-6"><p class="text-2xl font-extrabold leading-snug">${item.text}</p></div>`
+        ? `<div class="flex h-full w-full items-center justify-center text-center p-6 break-words"><p class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold leading-snug">${item.text}</p></div>`
         : item.media_type === 'youtube'
-        ? `<div class="h-full w-full"><iframe class="h-full w-full" src="${item.youtube}" title="${item.title}" allow="autoplay; picture-in-picture; encrypted-media" allowfullscreen></iframe></div>`
+        ? (item.has_embed
+            ? `<div class="flex h-full w-full items-center justify-center"><div class="relative w-full max-h-full aspect-video">${item.youtube_embed}</div></div>`
+            : `<div class="flex h-full w-full items-center justify-center"><div class="relative w-full max-h-full aspect-video"><iframe class="h-full w-full absolute inset-0" src="${item.youtube}" title="${item.title}" allow="autoplay; picture-in-picture; encrypted-media" allowfullscreen></iframe></div></div>`)
         : item.media_type === 'video'
-        ? `<div class="h-full w-full"><video class="h-full w-full object-cover" src="${item.video}" autoplay muted loop playsinline></video></div>`
-        : `<div class="h-full w-full"><img src="${item.image}" class="h-full w-full object-cover" alt="${item.title}"></div>`;
+        ? `<div class="flex h-full w-full items-center justify-center p-4"><video class="max-h-full max-w-full object-contain" src="${item.video}" autoplay muted loop playsinline></video></div>`
+        : `<div class="flex h-full w-full items-center justify-center p-4"><img src="${item.image}" class="max-h-full max-w-full object-contain" alt="${item.title}"></div>`;
     const total = a.items.length;
     document.getElementById('advertIndex').textContent = (advertIdx % total + 1) + ' / ' + total;
 }
+function cycleTo(a, idx){
+    advertIdx = idx % a.items.length;
+    renderAdvert(a);
+    const item = a.items[advertIdx];
+    let secs = Math.max(3, parseInt(item.duration_secs || a.duration_secs || '15', 10));
+    const pane = document.getElementById('advert');
+    const video = item.media_type === 'video' && pane ? pane.querySelector('video') : null;
+    const arm = () => { clearTimeout(advertTimer); advertTimer = setTimeout(() => cycleTo(a, advertIdx + 1), secs * 1000); };
+    if (video) {
+        const sync = () => { if (video.duration && isFinite(video.duration)) secs = Math.max(3, Math.round(video.duration)); arm(); };
+        if (video.readyState >= 1) sync(); else video.addEventListener('loadedmetadata', sync, { once: true });
+    } else {
+        arm();
+    }
+}
 function scheduleAdvert(a){
-    clearInterval(advertTimer); advertTimer = null; advertIdx = 0; renderAdvert(a);
-    if(!a || !a.enabled || !a.items || !a.items.length) return;
-    const item = a.items[0];
-    const dur = Math.max(3, parseInt(item.duration_secs || a.duration_secs || '15', 10)) * 1000;
-    if(a.mode === 'single'){ return; }
-    advertTimer = setInterval(() => { advertIdx++; renderAdvert(a); }, dur);
+    const sig = JSON.stringify(a || null);
+    if (sig === lastAdvertSig) return;
+    lastAdvertSig = sig;
+    clearTimeout(advertTimer); advertTimer = null; advertIdx = 0;
+    if (!a || !a.enabled || !a.items || !a.items.length) { renderAdvert(a); return; }
+    if (a.mode === 'single') { renderAdvert(a); return; }
+    cycleTo(a, 0);
 }
 async function load() {
     try {
         const r = await fetch("{{ route('display.api') }}"); const d = await r.json();
         document.getElementById('clinic').textContent = d.clinic || 'Queue-Pro';
         document.getElementById('date').textContent = d.date; document.getElementById('time').textContent = d.time;
-        if (d.ticker) document.getElementById('ticker').textContent = '✦ ' + d.ticker + ' ✦\u00a0';
+        document.getElementById('notice').textContent = '✦ ' + (d.ticker || 'Please keep your token with you') + ' ✦\u00a0';
         const secs = Math.min(30, Math.max(2, parseInt(d.refresh_secs || '4', 10)));
         if (secs * 1000 !== pollMs) { clearInterval(poller); poller = setInterval(load, secs * 1000); pollMs = secs * 1000; }
         const sig = JSON.stringify(d.now);
         if (lastSig && sig !== lastSig) { beep(880); setTimeout(beep, 300, 660); }
         lastSig = sig;
-        document.getElementById('now').innerHTML = d.now.map(n => `
-            <div class="card rounded-2xl p-6 ${n.token_no ? 'ring-2 ring-emerald-300 shadow-[0_0_40px_rgba(52,211,153,.25)]' : ''}">
-                <p class="text-indigo-200 text-xs font-bold uppercase tracking-widest">${n.counter}${n.room ? ' • Room '+n.room : ''} — ${n.service}</p>
-                <p class="text-6xl font-extrabold my-2 tracking-tight ${n.token_no ? 'flash text-emerald-300' : 'text-white/20'}">${n.token_no ?? '–––'}</p>
-                <p class="font-semibold">${n.patient ?? 'Waiting for next token…'}</p><p class="text-sm text-indigo-200">${n.doctor ?? ''} ${n.status ? '• '+n.status : ''}</p>
-            </div>`).join('');
-        document.getElementById('upcoming').innerHTML = d.upcoming.length
-            ? d.upcoming.map(u => `<span class="bg-white/10 border border-white/15 px-5 py-2.5 rounded-xl text-2xl font-mono font-extrabold">${u.token_no}</span>`).join('')
-            : '<span class="text-white/40">Queue clear — no waiting tokens 🎉</span>';
+        renderNow(d.now);
+        renderUpcoming(d.upcoming);
         scheduleAdvert(d.advert);
     } catch(e) {}
 }

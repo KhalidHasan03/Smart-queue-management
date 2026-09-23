@@ -28,14 +28,10 @@ class AdvertisementController extends Controller
 
     public function store(StoreAdvertisementRequest $request)
     {
-        $data = $request->safe()->except(['media_file', 'is_active']);
+        $data = $request->safe()->except(['media_file', 'is_active', 'youtube_embed', 'youtube_url']);
         $data['is_active'] = $request->boolean('is_active');
         $data['sort_order'] = (int) Advertisement::max('sort_order') + 1;
-
-        // Clear youtube_url if media_type is not youtube
-        if (($data['media_type'] ?? '') !== Advertisement::TYPE_YOUTUBE) {
-            $data['youtube_url'] = null;
-        }
+        $data = $this->applyYoutubeEmbed($data, $request);
 
         $advertisement = Advertisement::create($data);
         $this->handleMediaUpload($request, $advertisement);
@@ -56,13 +52,9 @@ class AdvertisementController extends Controller
 
     public function update(UpdateAdvertisementRequest $request, Advertisement $advertisement)
     {
-        $data = $request->safe()->except(['media_file', 'is_active']);
+        $data = $request->safe()->except(['media_file', 'is_active', 'youtube_embed', 'youtube_url']);
         $data['is_active'] = $request->boolean('is_active');
-
-        // Clear youtube_url if media_type is not youtube
-        if (($data['media_type'] ?? $advertisement->media_type) !== Advertisement::TYPE_YOUTUBE) {
-            $data['youtube_url'] = null;
-        }
+        $data = $this->applyYoutubeEmbed($data, $request);
 
         $advertisement->update($data);
         $this->handleMediaUpload($request, $advertisement);
@@ -140,6 +132,28 @@ class AdvertisementController extends Controller
         Setting::set('advert.position', $request->input('position', 'right'));
 
         return redirect()->route('admin.advertisements.index')->with('success', 'Advertisement settings saved.');
+    }
+
+    protected function applyYoutubeEmbed(array $data, Request $request): array
+    {
+        if (($data['media_type'] ?? '') !== Advertisement::TYPE_YOUTUBE) {
+            $data['youtube_embed'] = null;
+            $data['youtube_url'] = null;
+
+            return $data;
+        }
+
+        $sanitized = Advertisement::sanitizeEmbedFromInput($request->input('youtube_embed'));
+
+        if ($sanitized) {
+            $data['youtube_embed'] = $sanitized['embed'];
+            $data['youtube_url'] = $sanitized['url'];
+        } else {
+            $data['youtube_embed'] = null;
+            $data['youtube_url'] = null;
+        }
+
+        return $data;
     }
 
     protected function handleMediaUpload(Request $request, Advertisement $advertisement): void

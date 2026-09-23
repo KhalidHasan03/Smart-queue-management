@@ -53,23 +53,32 @@ class DisplayController extends Controller
 
     public function api()
     {
-        $today = Carbon::today()->toDateString();
+        $today = Carbon::today();
         $showPatient = Setting::get('display.show_patient', '1') === '1';
         $counters = Counter::with(['service', 'currentToken.patient', 'currentToken.doctor'])
             ->where('is_active', true)->where('show_on_display', true)->orderBy('name')->get();
 
-        $now = $counters->map(function ($c) use ($showPatient) {
+        $now = $counters->map(function ($c) use ($showPatient, $today) {
             $live = $c->currentToken && in_array($c->currentToken->status, [Token::CALLING, Token::SERVING], true)
-                && $c->currentToken->token_date->isSameDay(Carbon::today());
+                && $c->currentToken->token_date->isSameDay($today);
+
+            // Show the live token when one is being called/served, otherwise fall
+            // back to the most recently issued token so every row is populated.
+            $token = $live
+                ? $c->currentToken
+                : Token::where('counter_id', $c->id)->whereDate('token_date', $today)
+                    ->orderByDesc('created_at')->orderByDesc('id')->first();
 
             return [
                 'counter' => $c->name,
                 'room' => $c->room_no,
                 'service' => $c->service->name ?? '',
-                'token_no' => $live ? $c->currentToken->token_no : null,
+                'token_no' => $token?->token_no,
+                'status' => $token?->status,
+                'status_label' => $token ? self::statusLabel($token->status) : null,
                 'patient' => $live && $showPatient ? $c->currentToken->patient->name ?? null : null,
                 'doctor' => $live ? $c->currentToken->doctor->name ?? null : null,
-                'status' => $live ? $c->currentToken->status : null,
+                'is_live' => $live,
             ];
         });
 
@@ -92,6 +101,8 @@ class DisplayController extends Controller
             'image' => $a->media_type === Advertisement::TYPE_IMAGE ? $a->media_url : null,
             'video' => $a->media_type === Advertisement::TYPE_VIDEO ? $a->media_url : null,
             'youtube' => $a->media_type === Advertisement::TYPE_YOUTUBE ? $a->youtube_embed_url : null,
+            'youtube_embed' => $a->has_embed ? $a->youtube_embed : null,
+            'has_embed' => $a->has_embed,
             'text' => $a->media_type === Advertisement::TYPE_TEXT ? $a->description : null,
             'duration_secs' => $a->duration_secs,
         ]);
@@ -112,5 +123,18 @@ class DisplayController extends Controller
                 'items' => $advertItems,
             ],
         ]);
+    }
+
+    protected static function statusLabel(string $status): string
+    {
+        return match ($status) {
+            Token::WAITING => 'Waiting',
+            Token::CALLING => 'Calling',
+            Token::SERVING => 'Serving',
+            Token::COMPLETED => 'Completed',
+            Token::SKIPPED => 'Skipped',
+            Token::CANCELLED => 'Cancelled',
+            default => ucfirst($status),
+        };
     }
 }

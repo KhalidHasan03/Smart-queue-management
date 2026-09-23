@@ -6,7 +6,7 @@
         ];
         $hasErrors = $errors->any();
         $currentMediaType = $advertisement->media_type;
-        $currentYoutubeUrl = $advertisement->youtube_url ?? '';
+        $currentYoutubeEmbed = $advertisement->youtube_embed ?? $advertisement->youtube_url ?? '';
         $currentMediaPath = $advertisement->media_path;
         $currentTextContent = $advertisement->media_type === \App\Models\Advertisement::TYPE_TEXT ? $advertisement->description : '';
     @endphp
@@ -64,13 +64,11 @@
             @endif
         </div>
         <div id="qc-ad-youtube" class="hidden space-y-2">
-            <label class="qc-label">YouTube URL *</label>
-            <input name="youtube_url" id="qc-youtube-url" value="{{ old('youtube_url', $currentYoutubeUrl) }}" class="qc-input mt-1" placeholder="https://www.youtube.com/watch?v=...">
-            <div id="qc-youtube-preview" class="{{ $currentYoutubeUrl ? '' : 'hidden' }}">
+            <label class="qc-label">YouTube Embed Link *</label>
+            <textarea name="youtube_embed" id="qc-youtube-embed" rows="3" class="qc-input mt-1" placeholder="Paste a YouTube video URL or the full &lt;iframe&gt; embed code">{{ old('youtube_embed', $currentYoutubeEmbed) }}</textarea>
+            <p class="text-xs text-slate-500">Paste either a video URL (e.g. https://www.youtube.com/watch?v=...) or the iframe embed code from YouTube's Share → Embed menu.</p>
+            <div id="qc-youtube-preview" class="{{ $currentYoutubeEmbed ? '' : 'hidden' }}">
                 <iframe id="qc-youtube-iframe" width="100%" height="200" frameborder="0" allowfullscreen></iframe>
-                @if($currentYoutubeUrl)
-                    <p class="text-xs text-slate-500 mt-1">Current: <a href="{{ $currentYoutubeUrl }}" target="_blank" class="text-indigo-600 hover:underline">{{ $currentYoutubeUrl }}</a></p>
-                @endif
             </div>
         </div>
         <div id="qc-ad-text" class="hidden">
@@ -99,7 +97,7 @@
             const fileInput = document.getElementById('qc-ad-file-input');
             const fileLabel = document.getElementById('qc-ad-file-label');
             const filePreview = document.getElementById('qc-file-preview');
-            const ytUrlInput = document.getElementById('qc-youtube-url');
+            const ytEmbedInput = document.getElementById('qc-youtube-embed');
             const ytPreview = document.getElementById('qc-youtube-preview');
             const ytIframe = document.getElementById('qc-youtube-iframe');
             const accepts = {
@@ -144,9 +142,9 @@
                 return m ? m[1] : null;
             }
 
-            ytUrlInput?.addEventListener('input', function () {
-                const url = this.value.trim();
-                const id = extractYoutubeId(url);
+            ytEmbedInput?.addEventListener('input', function () {
+                const value = this.value.trim();
+                const id = extractYoutubeId(value);
                 if (id) {
                     ytIframe.src = 'https://www.youtube.com/embed/' + id + '?rel=0';
                     ytPreview.classList.remove('hidden');
@@ -156,9 +154,9 @@
                 }
             });
 
-            // Initialize YouTube preview if URL exists
-            if (ytUrlInput?.value) {
-                const id = extractYoutubeId(ytUrlInput.value);
+            // Initialize YouTube preview if embed exists
+            if (ytEmbedInput?.value) {
+                const id = extractYoutubeId(ytEmbedInput.value);
                 if (id) {
                     ytIframe.src = 'https://www.youtube.com/embed/' + id + '?rel=0';
                     ytPreview.classList.remove('hidden');
