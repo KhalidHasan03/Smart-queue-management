@@ -10,6 +10,16 @@
 </style>
 </head>
 <body class="min-h-screen">
+@php
+    $pos = $advertPosition ?? 'right';
+    $isLeft = $pos === 'left';
+    $isBottom = $pos === 'bottom';
+    $counterWidth = $isBottom ? 'lg:col-span-12' : 'lg:col-span-4';
+    $advertWidth = $isBottom ? 'lg:col-span-12' : 'lg:col-span-8';
+    $counterOrder = $isLeft ? 'lg:order-2' : 'lg:order-1';
+    $advertOrder = $isLeft ? 'lg:order-1' : 'lg:order-2';
+    $counterRows = $isBottom ? '' : 'lg:grid-rows-[minmax(0,3fr)_minmax(0,2fr)]';
+@endphp
 <div class="max-w-[1700px] mx-auto w-full min-h-screen flex flex-col p-4 sm:p-6 gap-4">
     <header class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
         <div class="flex items-center gap-3"><div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-500 flex items-center justify-center text-2xl font-extrabold shadow-xl">Q</div>
@@ -17,8 +27,8 @@
         <div class="text-right"><p id="date" class="text-indigo-200 text-sm"></p><p id="time" class="text-3xl font-mono font-extrabold"></p></div>
     </header>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0 items-stretch">
-        <div class="lg:col-span-4 grid grid-cols-1 gap-4 min-h-0 lg:grid-rows-[minmax(0,3fr)_minmax(0,2fr)]">
+    <div data-advert-position="{{ $pos }}" class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0 items-stretch">
+        <div class="{{ $counterWidth }} {{ $counterOrder }} grid grid-cols-1 gap-4 min-h-0 {{ $counterRows }}">
             <section class="card rounded-2xl overflow-hidden flex flex-col min-h-0">
                 <div class="flex items-center justify-between px-5 py-3 bg-white/5 border-b border-white/10">
                     <h2 class="text-[11px] sm:text-sm font-bold uppercase tracking-widest text-indigo-200">Recent Display</h2>
@@ -44,7 +54,7 @@
             </section>
         </div>
 
-        <aside class="lg:col-span-8 card rounded-2xl overflow-hidden flex flex-col min-h-0">
+        <aside class="{{ $advertWidth }} {{ $advertOrder }} card rounded-2xl overflow-hidden flex flex-col min-h-0">
             <div class="flex items-center justify-between px-5 py-3 bg-white/5 border-b border-white/10">
                 <h2 class="text-sm font-bold uppercase tracking-widest text-indigo-200">Advertisement</h2>
                 <span id="advertIndex" class="text-xs text-white/40 font-mono"></span>
@@ -108,7 +118,7 @@ function renderAdvert(a){
             ? `<div class="flex h-full w-full items-center justify-center"><div class="relative w-full max-h-full aspect-video">${item.youtube_embed}</div></div>`
             : `<div class="flex h-full w-full items-center justify-center"><div class="relative w-full max-h-full aspect-video"><iframe class="h-full w-full absolute inset-0" src="${item.youtube}" title="${item.title}" allow="autoplay; picture-in-picture; encrypted-media" allowfullscreen></iframe></div></div>`)
         : item.media_type === 'video'
-        ? `<div class="flex h-full w-full items-center justify-center p-4"><video class="max-h-full max-w-full object-contain" src="${item.video}" autoplay muted loop playsinline></video></div>`
+        ? `<div class="flex h-full w-full items-center justify-center p-4"><video class="max-h-full max-w-full object-contain" src="${item.video}" type="${item.media_mime || 'video/mp4'}" autoplay muted loop playsinline></video></div>`
         : `<div class="flex h-full w-full items-center justify-center p-4"><img src="${item.image}" class="max-h-full max-w-full object-contain" alt="${item.title}"></div>`;
     const total = a.items.length;
     document.getElementById('advertIndex').textContent = (advertIdx % total + 1) + ' / ' + total;
@@ -120,10 +130,29 @@ function cycleTo(a, idx){
     let secs = Math.max(3, parseInt(item.duration_secs || a.duration_secs || '15', 10));
     const pane = document.getElementById('advert');
     const video = item.media_type === 'video' && pane ? pane.querySelector('video') : null;
-    const arm = () => { clearTimeout(advertTimer); advertTimer = setTimeout(() => cycleTo(a, advertIdx + 1), secs * 1000); };
+    const arm = () => {
+        clearTimeout(advertTimer);
+        secs = Math.min(600, Math.max(3, isFinite(secs) ? secs : 15));
+        advertTimer = setTimeout(() => cycleTo(a, advertIdx + 1), secs * 1000);
+    };
     if (video) {
-        const sync = () => { if (video.duration && isFinite(video.duration)) secs = Math.max(3, Math.round(video.duration)); arm(); };
-        if (video.readyState >= 1) sync(); else video.addEventListener('loadedmetadata', sync, { once: true });
+        // A video that never fires loadedmetadata (unsupported codec, dead file,
+        // blocked network, wrong MIME) must not stall the playlist forever, so
+        // we arm the rotation on metadata, error, or a short safety timeout.
+        const fallback = () => setTimeout(() => { secs = Math.min(secs, 12); arm(); }, 4000);
+        const timer = fallback();
+        const onLoad = () => {
+            clearTimeout(timer);
+            if (video.duration && isFinite(video.duration) && video.duration > 1) {
+                secs = Math.max(3, Math.round(video.duration));
+            }
+            arm();
+        };
+        if (video.readyState >= 1) onLoad();
+        else {
+            video.addEventListener('loadedmetadata', onLoad, { once: true });
+            video.addEventListener('error', onLoad, { once: true });
+        }
     } else {
         arm();
     }

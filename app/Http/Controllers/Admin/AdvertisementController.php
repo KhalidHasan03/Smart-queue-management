@@ -8,14 +8,16 @@ use App\Http\Requests\Admin\UpdateAdvertisementRequest;
 use App\Models\Advertisement;
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class AdvertisementController extends Controller
 {
     public function index()
     {
-        $advertisements = Advertisement::orderBy('sort_order')->orderBy('id')->paginate(15);
+        $advertisements = Advertisement::orderBy('sort_order')->orderBy('id')->paginate(100);
         $config = $this->config();
 
         return view('admin.advertisements.index', compact('advertisements', 'config'));
@@ -23,7 +25,9 @@ class AdvertisementController extends Controller
 
     public function create()
     {
-        return view('admin.advertisements.create');
+        return view('admin.advertisements.create', [
+            'defaultDuration' => $this->config()['duration_secs'],
+        ]);
     }
 
     public function store(StoreAdvertisementRequest $request)
@@ -32,13 +36,14 @@ class AdvertisementController extends Controller
         $data['is_active'] = $request->boolean('is_active');
         $data['sort_order'] = (int) Advertisement::max('sort_order') + 1;
         $data = $this->applyYoutubeEmbed($data, $request);
+        $data['duration_secs'] = $this->resolveDuration($data['duration_secs'] ?? null);
 
         $advertisement = Advertisement::create($data);
         $this->handleMediaUpload($request, $advertisement);
 
         // The first advertisement becomes the live one automatically so the playlist
-        // never starts empty on the patient display.
-        if (Advertisement::where('is_live', true)->doesntExist()) {
+        // never starts empty on the patient display — but only if it is active.
+        if ($data['is_active'] && Advertisement::where('is_live', true)->doesntExist()) {
             $advertisement->update(['is_live' => true]);
         }
 
@@ -47,7 +52,10 @@ class AdvertisementController extends Controller
 
     public function edit(Advertisement $advertisement)
     {
-        return view('admin.advertisements.edit', compact('advertisement'));
+        return view('admin.advertisements.edit', [
+            'advertisement' => $advertisement,
+            'defaultDuration' => $this->config()['duration_secs'],
+        ]);
     }
 
     public function update(UpdateAdvertisementRequest $request, Advertisement $advertisement)
@@ -55,6 +63,7 @@ class AdvertisementController extends Controller
         $data = $request->safe()->except(['media_file', 'is_active', 'youtube_embed', 'youtube_url']);
         $data['is_active'] = $request->boolean('is_active');
         $data = $this->applyYoutubeEmbed($data, $request);
+        $data['duration_secs'] = $this->resolveDuration($data['duration_secs'] ?? null);
 
         $advertisement->update($data);
         $this->handleMediaUpload($request, $advertisement);
@@ -70,8 +79,7 @@ class AdvertisementController extends Controller
         // If the live advertisement was deleted, promote the first active one so the
         // patient display playlist keeps a working item.
         if (Advertisement::where('is_live', true)->doesntExist()) {
-            Advertisement::active()->orderBy('sort_order')->orderBy('id')
-                ->limit(1)->get()->each->update(['is_live' => true]);
+            $this->promoteLive();
         }
 
         return redirect()->route('admin.advertisements.index')->with('success', 'Advertisement deleted.');
@@ -79,12 +87,18 @@ class AdvertisementController extends Controller
 
     public function toggle(Advertisement $advertisement)
     {
-        $advertisement->update(['is_active' => ! $advertisement->is_active]);
+        $advertisement->is_active = ! $advertisement->is_active;
+        $advertisement->save();
 
         if (! $advertisement->is_active && $advertisement->is_live) {
-            $advertisement->update(['is_live' => false]);
-            Advertisement::active()->orderBy('sort_order')->orderBy('id')
-                ->limit(1)->get()->each->update(['is_live' => true]);
+            $advertisement->is_live = false;
+            $advertisement->save();
+            $this->promoteLive();
+        }
+
+        // Resuming an ad in single mode: make sure the display still has a live item.
+        if ($advertisement->is_active && Advertisement::where('is_live', true)->doesntExist()) {
+            $this->promoteLive();
         }
 
         return back()->with('success', 'Advertisement updated.');
@@ -166,12 +180,40 @@ class AdvertisementController extends Controller
         if ($usesFile) {
             if ($request->hasFile('media_file')) {
                 $this->deleteMediaFile($advertisement);
-                $path = $request->file('media_file')->store('ads', 'public');
-                $advertisement->update(['media_path' => $path]);
+                $mediaPath = $this->storeMediaFile($request->file('media_file'), $advertisement->media_type);
+                $advertisement->update(['media_path' => $mediaPath]);
             }
         } else {
             $this->deleteMediaFile($advertisement);
         }
+    }
+
+    /**
+     * Store the uploaded media under a randomized name with a safe extension
+     * derived from the validated upload — never from PHP's MIME guesser, which
+     * routinely names real videos ".bin" and makes them unplayable on the
+     * display.
+     */
+    protected function storeMediaFile(UploadedFile $file, string $mediaType): string
+    {
+        $extension = strtolower(trim($file->getClientOriginalExtension()));
+
+        $safeExtension = match ($mediaType) {
+            Advertisement::TYPE_VIDEO => in_array($extension, ['mp4', 'webm'], true) ? $extension : 'mp4',
+            Advertisement::TYPE_IMAGE => in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'], true)
+                ? ($extension === 'jpeg' ? 'jpg' : $extension)
+                : 'jpg',
+            default => 'jpg',
+        };
+
+        return $file->storeAs('ads', Str::random(40).'.'.$safeExtension, 'public');
+    }
+
+    protected function resolveDuration(?int $durationSecs): int
+    {
+        $global = (int) Setting::get('advert.duration_secs', '15');
+
+        return max(3, $durationSecs ?? $global);
     }
 
     protected function deleteMediaFile(Advertisement $advertisement): void
@@ -180,6 +222,12 @@ class AdvertisementController extends Controller
             Storage::disk('public')->delete($advertisement->media_path);
             $advertisement->update(['media_path' => null]);
         }
+    }
+
+    protected function promoteLive(): void
+    {
+        Advertisement::active()->orderBy('sort_order')->orderBy('id')
+            ->limit(1)->get()->each->update(['is_live' => true]);
     }
 
     protected function config(): array

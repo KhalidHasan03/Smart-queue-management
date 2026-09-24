@@ -13,7 +13,9 @@ class DisplayController extends Controller
 {
     public function screen()
     {
-        return view('display.screen');
+        return view('display.screen', [
+            'advertPosition' => Setting::get('advert.position', 'right'),
+        ]);
     }
 
     public function manage()
@@ -100,6 +102,7 @@ class DisplayController extends Controller
             'media_type' => $a->media_type,
             'image' => $a->media_type === Advertisement::TYPE_IMAGE ? $a->media_url : null,
             'video' => $a->media_type === Advertisement::TYPE_VIDEO ? $a->media_url : null,
+            'media_mime' => $a->media_type === Advertisement::TYPE_VIDEO ? $a->media_mime : null,
             'youtube' => $a->media_type === Advertisement::TYPE_YOUTUBE ? $a->youtube_embed_url : null,
             'youtube_embed' => $a->has_embed ? $a->youtube_embed : null,
             'has_embed' => $a->has_embed,

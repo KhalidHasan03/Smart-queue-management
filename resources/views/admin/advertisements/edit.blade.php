@@ -1,8 +1,8 @@
 <x-app-layout>
     @php
         $types = [
-            'image' => ['label' => 'Image', 'accept' => 'image/*', 'ext' => 'jpg,jpeg,png,webp,gif'],
-            'video' => ['label' => 'Video', 'accept' => 'video/*', 'ext' => 'mp4,webm,mov,ogg'],
+            'image' => ['label' => 'Image', 'accept' => 'image/*', 'ext' => 'jpg, jpeg, png, webp, gif, bmp'],
+            'video' => ['label' => 'Video', 'accept' => 'video/*', 'ext' => 'mp4, webm — up to 50 MB'],
         ];
         $hasErrors = $errors->any();
         $currentMediaType = $advertisement->media_type;
@@ -43,13 +43,15 @@
             </div>
             <div>
                 <label class="qc-label">Duration (seconds) *</label>
-                <input name="duration_secs" type="number" min="3" max="600" value="{{ old('duration_secs', $advertisement->duration_secs) }}" class="qc-input mt-1">
+                <input name="duration_secs" type="number" min="3" max="600" value="{{ old('duration_secs', $advertisement->duration_secs ?? $defaultDuration ?? 15) }}" class="qc-input mt-1">
+                <p class="text-xs text-slate-500 mt-1">Global default is {{ $defaultDuration ?? 15 }}s — leave empty to use it.</p>
             </div>
         </div>
 
         <div id="qc-ad-file" class="hidden space-y-2">
             <label class="qc-label" id="qc-ad-file-label">Media file *</label>
             <input type="file" name="media_file" id="qc-ad-file-input" class="qc-input mt-1" accept="{{ $types['image']['accept'] }},{{ $types['video']['accept'] }}">
+            <p id="qc-ad-file-ext" class="text-xs text-slate-500">Supported: {{ $types['video']['ext'] }}</p>
             @if($currentMediaPath)
                 <div id="qc-file-preview" class="mt-2">
                     @if($currentMediaType === 'image')
@@ -73,10 +75,10 @@
         </div>
         <div id="qc-ad-text" class="hidden">
             <label class="qc-label">Ad text *</label>
-            <textarea name="text_content" rows="3" class="qc-input mt-1" placeholder="Text to display on screen" required>{{ old('text_content', $currentTextContent) }}</textarea>
+            <textarea name="text_content" rows="3" class="qc-input mt-1" placeholder="Text to display on screen">{{ old('text_content', $currentTextContent) }}</textarea>
         </div>
 
-        <div>
+        <div id="qc-ad-notes">
             <label class="qc-label">Description (internal notes)</label>
             <textarea name="description" rows="2" class="qc-input mt-1" placeholder="Optional internal notes">{{ old('description', $advertisement->description) }}</textarea>
         </div>
@@ -94,8 +96,10 @@
             const fileEl = document.getElementById('qc-ad-file');
             const ytEl = document.getElementById('qc-ad-youtube');
             const txtEl = document.getElementById('qc-ad-text');
+            const notesEl = document.getElementById('qc-ad-notes');
             const fileInput = document.getElementById('qc-ad-file-input');
             const fileLabel = document.getElementById('qc-ad-file-label');
+            const fileExt = document.getElementById('qc-ad-file-ext');
             const filePreview = document.getElementById('qc-file-preview');
             const ytEmbedInput = document.getElementById('qc-youtube-embed');
             const ytPreview = document.getElementById('qc-youtube-preview');
@@ -105,14 +109,27 @@
                 video: ['{{ $types["video"]["accept"] }}'],
                 text: [], youtube: []
             };
+            const extHints = {
+                image: '{{ $types["image"]["ext"] }}',
+                video: '{{ $types["video"]["ext"] }}',
+                text: '', youtube: ''
+            };
 
             function toggle() {
                 const t = typeEl.value;
                 fileEl.classList.toggle('hidden', t !== 'image' && t !== 'video');
                 ytEl.classList.toggle('hidden', t !== 'youtube');
                 txtEl.classList.toggle('hidden', t !== 'text');
+                if (notesEl) notesEl.classList.toggle('hidden', t === 'text');
                 if (fileInput) fileInput.accept = (accepts[t] || []).join(',');
                 if (fileLabel) fileLabel.textContent = t === 'video' ? 'Video file *' : 'Image file *';
+                if (fileExt && (t === 'video' || t === 'image')) fileExt.textContent = 'Supported: ' + (extHints[t] || '');
+                // The text area is required only while its section is actually
+                // visible. A hardcoded `required` attribute on a CSS-hidden
+                // textarea blocks form submission in some browsers even when
+                // nothing is rendered, which made the Update button appear dead.
+                const txtArea = txtEl?.querySelector('textarea');
+                if (txtArea) txtArea.required = (t === 'text');
             }
 
             // File preview for new upload
@@ -138,7 +155,7 @@
 
             // YouTube preview
             function extractYoutubeId(url) {
-                const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
+                const m = url.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
                 return m ? m[1] : null;
             }
 

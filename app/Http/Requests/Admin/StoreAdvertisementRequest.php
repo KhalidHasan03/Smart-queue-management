@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\Advertisement;
+use App\Rules\AdMediaFile;
+use App\Support\UploadLimits;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -25,6 +27,13 @@ class StoreAdvertisementRequest extends FormRequest
             if ($sanitized) {
                 $input['title'] = 'YouTube ad '.Advertisement::youtubeIdFromUrl($sanitized['url']);
             }
+        }
+
+        // Text ads store their on-screen copy in the `description` column; the
+        // form posts it as `text_content`.
+        if (($input['media_type'] ?? '') === Advertisement::TYPE_TEXT) {
+            $input['description'] = trim((string) ($input['text_content'] ?? ''));
+            $input['text_content'] = $input['description'];
         }
 
         $this->merge($input);
@@ -63,9 +72,42 @@ class StoreAdvertisementRequest extends FormRequest
     private function mediaFileRules(string $mediaType): array
     {
         return match ($mediaType) {
-            Advertisement::TYPE_VIDEO => ['required', 'file', 'mimes:mp4,webm,mov,ogg', 'max:51200'],
-            Advertisement::TYPE_IMAGE => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+            Advertisement::TYPE_VIDEO => $this->mediaFileRule('video', ['mp4', 'webm'], ['video/mp4', 'video/webm'], true, UploadLimits::maxKb(51200)),
+            Advertisement::TYPE_IMAGE => $this->mediaFileRule('image', ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'], ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'], true, 5120),
             default => ['nullable'],
         };
+    }
+
+    private function mediaFileRule(string $family, array $extensions, array $mimeTypes, bool $required, int $maxKb): array
+    {
+        $rules = [
+            'file',
+            "max:{$maxKb}",
+            function ($attribute, $value, $fail) use ($family) {
+                if ($value === null) {
+                    return;
+                }
+                if (! $value instanceof \Illuminate\Http\UploadedFile || ! $value->isValid()) {
+                    $limit = ini_get('upload_max_filesize') ?: 'unknown';
+                    $fail("The {$family} file was not uploaded. The server upload limit is {$limit}.");
+                }
+            },
+            new AdMediaFile($extensions, $family, $mimeTypes),
+        ];
+
+        if ($required) {
+            array_unshift($rules, 'required');
+        } else {
+            array_unshift($rules, 'nullable');
+        }
+
+        return $rules;
+    }
+
+    public function messages(): array
+    {
+        return [
+            'media_file.max' => 'The uploaded file is too large. This server accepts files up to :max KB.',
+        ];
     }
 }

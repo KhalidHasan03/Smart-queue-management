@@ -35,7 +35,7 @@
             </div>
             <div class="md:col-span-2">
                 <label class="qc-label">Duration (secs)</label>
-                <input name="duration_secs" type="number" min="3" max="600" value="{{ old('duration_secs', '15') }}" class="qc-input mt-1">
+                <input name="duration_secs" type="number" min="3" max="600" value="{{ old('duration_secs', $config['duration_secs'] ?? 15) }}" class="qc-input mt-1">
             </div>
             <div class="md:col-span-2">
                 <label class="qc-label">&nbsp;</label>
@@ -162,6 +162,7 @@
                 item.addEventListener('dragover', e => {
                     e.preventDefault();
                     e.dataTransfer.dropEffect = 'move';
+                    if (!dragSrc) return;
                     const after = getDragAfterElement(container, e.clientY);
                     if (after == null) {
                         container.appendChild(dragSrc);

@@ -118,9 +118,12 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
     });
 
     Route::middleware('permission:adverts.view')->group(function () {
-        // Form (index playlists + settings) is group-viewable; management actions sit
-        // behind adverts.manage / adverts.configure so access can be granted narrowly.
+        // Form (index playlists) is group-viewable; management actions sit
+        // behind adverts.manage / adverts.configure so access can be granted
+        // narrowly.
         Route::get('/admin/advertisements', [AdvertisementController::class, 'index'])->name('admin.advertisements.index');
+    });
+    Route::middleware('permission:adverts.configure')->group(function () {
         Route::get('/admin/advertisements/settings', [AdvertisementController::class, 'settings'])->name('admin.advertisements.settings');
         Route::patch('/admin/advertisements/settings', [AdvertisementController::class, 'updateSettings'])->name('admin.advertisements.settings.update');
     });

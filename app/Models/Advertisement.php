@@ -66,6 +66,31 @@ class Advertisement extends Model
         return $this->media_path ? asset('storage/'.$this->media_path) : null;
     }
 
+    /**
+     * MIME type for the stored file so the display can render <video type>,
+     * <img> fallbacks without relying on the web server's extension mapping.
+     */
+    public function getMediaMimeAttribute(): ?string
+    {
+        if (! $this->media_path) {
+            return null;
+        }
+
+        $extension = strtolower(pathinfo($this->media_path, PATHINFO_EXTENSION));
+
+        return match ($this->media_type) {
+            self::TYPE_VIDEO => $extension === 'webm' ? 'video/webm' : 'video/mp4',
+            self::TYPE_IMAGE => match ($extension) {
+                'png' => 'image/png',
+                'gif' => 'image/gif',
+                'webp' => 'image/webp',
+                'bmp' => 'image/bmp',
+                default => 'image/jpeg',
+            },
+            default => null,
+        };
+    }
+
     public static function youtubeIdFromUrl(?string $url): ?string
     {
         if (! $url) {
@@ -99,6 +124,11 @@ class Advertisement extends Model
             return null;
         }
 
+        // The embed may arrive HTML-entity-escaped (e.g. re-submitted textarea
+        // content read back as &lt;iframe&gt; / &amp;). Decode it first so both
+        // iframe detection and URL extraction see the real characters.
+        $input = html_entity_decode($input, ENT_QUOTES | ENT_HTML5);
+
         $src = $input;
 
         if (stripos($input, '<iframe') !== false) {
@@ -127,7 +157,13 @@ class Advertisement extends Model
 
     protected function getMediaTypeLabelAttribute(): string
     {
-        return self::TYPES[$this->media_type] ?? $this->media_type;
+        return match ($this->media_type) {
+            self::TYPE_VIDEO => 'Video',
+            self::TYPE_IMAGE => 'Image',
+            self::TYPE_YOUTUBE => 'YouTube',
+            self::TYPE_TEXT => 'Text',
+            default => ucfirst($this->media_type),
+        };
     }
 
     public function scopeActive(Builder $query): Builder
