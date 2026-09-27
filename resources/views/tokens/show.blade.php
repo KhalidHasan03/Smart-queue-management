@@ -11,9 +11,9 @@
                 <a href="{{ route('tokens.print', $token) }}" target="_blank" class="qc-btn-dark">🖨 Print</a>
                 <a href="{{ route('tokens.create') }}" class="qc-btn-primary">+ New</a>
                 @if($token->status === \App\Models\Token::COMPLETED && $token->canBeReviewed())
-                    <a href="{{ route('review.show', $token->token_no) }}" class="qc-btn-success">⭐ Leave Review</a>
+                    <a href="{{ route('review.kiosk', ['code' => $token->review_code]) }}" class="qc-btn-success">😊 Rate Your Visit</a>
                 @elseif($token->status === \App\Models\Token::COMPLETED && $token->review?->exists)
-                    <a href="{{ route('review.success', $token->token_no) }}" class="qc-btn-secondary">📝 View Review</a>
+                    <a href="{{ route('review.thanks', ['code' => $token->review_code]) }}" class="qc-btn-secondary">📝 View Your Review</a>
                 @endif
             </div>
         </div>

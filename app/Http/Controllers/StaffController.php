@@ -56,7 +56,14 @@ class StaffController extends Controller
                 if ($fresh->status === Token::CALLING) {
                     $fresh->update(['status' => Token::SERVING, 'started_at' => now()]);
                 } elseif ($fresh->status === Token::SERVING) {
-                    $fresh->update(['status' => Token::COMPLETED, 'finished_at' => now()]);
+                    // Matches QueueService::complete() so a visit finished by a
+                    // service staff member can still be rated by the patient.
+                    $fresh->update([
+                        'status' => Token::COMPLETED,
+                        'finished_at' => now(),
+                        'review_status' => 'pending',
+                        'review_requested_at' => now(),
+                    ]);
                 } else {
                     throw ValidationException::withMessages(['token' => 'Only calling/serving tokens can be processed.']);
                 }

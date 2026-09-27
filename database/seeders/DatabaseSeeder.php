@@ -8,6 +8,7 @@ use App\Models\Doctor;
 use App\Models\Service;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\ReviewSettings;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -94,6 +95,12 @@ class DatabaseSeeder extends Seeder
         Setting::updateOrCreate(['key' => 'display.refresh_secs'], ['value' => '4']);
         Setting::updateOrCreate(['key' => 'display.ticker'], ['value' => 'Please keep your token with you']);
         Setting::updateOrCreate(['key' => 'display.show_patient'], ['value' => '1']);
+
+        // Review kiosk defaults. Read from the single source of truth so the
+        // seeded rows can never drift from App\Support\ReviewSettings::DEFAULTS.
+        foreach (ReviewSettings::DEFAULTS as $settingKey => $settingValue) {
+            Setting::updateOrCreate(['key' => $settingKey], ['value' => $settingValue]);
+        }
 
         Setting::updateOrCreate(['key' => 'advert.enabled'], ['value' => '1']);
         Setting::updateOrCreate(['key' => 'advert.mode'], ['value' => 'cycle']);

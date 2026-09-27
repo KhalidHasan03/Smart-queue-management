@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Counter;
 use App\Models\Doctor;
 use App\Models\Patient;
-use App\Models\Review;
 use App\Models\Service;
 use App\Models\Setting;
 use App\Models\Token;
@@ -37,25 +36,14 @@ class LandingController extends Controller
         $today = Carbon::today()->toDateString();
         $base = Token::whereDate('token_date', $today);
         $data['stats'] = [
-            'waiting' => (clone $base)->where('status', 'waiting')->count(),
+            // Only patients a counter can actually call are counted as waiting,
+            // so a closed desk never inflates the public "waiting now" figure.
+            'waiting' => (clone $base)->where('status', 'waiting')->atOpenCounter()->count(),
             'calling' => (clone $base)->where('status', 'calling')->count(),
             'serving' => (clone $base)->where('status', 'serving')->count(),
             'completed' => (clone $base)->where('status', 'completed')->count(),
             'total' => (clone $base)->count(),
         ];
-
-        $data['reviews'] = Review::where('is_approved', true)
-            ->with('token')
-            ->orderByDesc('created_at')
-            ->limit(6)
-            ->get()
-            ->map(fn (Review $r) => [
-                'rating' => $r->rating,
-                'comment' => $r->comment,
-                'display_name' => $r->display_name,
-                'token_no' => $r->token->token_no ?? '',
-                'date' => $r->created_at->format('d M Y'),
-            ]);
 
         $data['totalDoctors'] = Doctor::where('is_active', true)->count();
         $data['totalPatients'] = Patient::count();
@@ -329,103 +317,6 @@ class LandingController extends Controller
         ]);
 
         return view('landing.industry', $data);
-    }
-
-    public function verifyToken(Request $request)
-    {
-        $request->validate([
-            'token_no' => 'required|string|max:20',
-            'patient_name' => 'required|string|max:255',
-        ]);
-
-        $token = Token::with(['patient', 'doctor', 'service'])
-            ->where('token_no', $request->token_no)
-            ->where('status', 'completed')
-            ->first();
-
-        if (! $token) {
-            return response()->json(['message' => 'Token not found or not yet completed.'], 404);
-        }
-
-        $patientName = trim(strtolower($token->patient->name));
-        $inputName = trim(strtolower($request->patient_name));
-
-        if (! str_contains($patientName, $inputName) && ! str_contains($inputName, $patientName)) {
-            return response()->json(['message' => 'Name does not match this token.'], 404);
-        }
-
-        $existing = Review::where('token_id', $token->id)->where('patient_id', $token->patient_id)->first();
-        if ($existing) {
-            return response()->json(['message' => 'You have already reviewed this visit.'], 422);
-        }
-
-        return response()->json([
-            'token_id' => $token->id,
-            'patient_id' => $token->patient_id,
-            'token_no' => $token->token_no,
-            'doctor' => $token->doctor->name ?? '',
-            'service' => $token->service->name ?? '',
-            'date' => $token->token_date->format('d M Y'),
-        ]);
-    }
-
-    public function storeReview(Request $request)
-    {
-        $request->validate([
-            'token_id' => 'required|exists:tokens,id',
-            'patient_id' => 'required|exists:patients,id',
-            'rating' => 'required|integer|min:1|max:5',
-            'comment' => 'nullable|string|max:1000',
-            'display_name' => 'nullable|string|max:100',
-        ]);
-
-        $existing = Review::where('token_id', $request->token_id)
-            ->where('patient_id', $request->patient_id)
-            ->first();
-
-        if ($existing) {
-            return response()->json(['message' => 'You have already reviewed this visit.'], 422);
-        }
-
-        $review = Review::create([
-            'token_id' => $request->token_id,
-            'patient_id' => $request->patient_id,
-            'rating' => $request->rating,
-            'comment' => $request->comment,
-            'display_name' => $request->display_name,
-            'is_approved' => false,
-        ]);
-
-        $token = $review->token;
-
-        return response()->json([
-            'message' => 'Review submitted successfully.',
-            'review' => [
-                'rating' => $review->rating,
-                'comment' => $review->comment,
-                'display_name' => $review->display_name,
-                'token_no' => $token->token_no ?? '',
-                'date' => $review->created_at->format('d M Y'),
-            ],
-        ]);
-    }
-
-    public function getReviews()
-    {
-        $reviews = Review::where('is_approved', true)
-            ->with('token')
-            ->orderByDesc('created_at')
-            ->limit(20)
-            ->get()
-            ->map(fn (Review $r) => [
-                'rating' => $r->rating,
-                'comment' => $r->comment,
-                'display_name' => $r->display_name,
-                'token_no' => $r->token->token_no ?? '',
-                'date' => $r->created_at->format('d M Y'),
-            ]);
-
-        return response()->json($reviews);
     }
 
     public function submitContact(Request $request)

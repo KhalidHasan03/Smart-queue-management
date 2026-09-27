@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Review;
 use App\Models\Token;
 use App\Models\User;
 use App\Services\QueueService;
@@ -24,12 +25,14 @@ class QueueController extends Controller
         if (! $counter && $user->role === User::ROLE_OPERATOR) {
             return view('queue.index', [
                 'counter' => null, 'current' => null, 'previous' => null,
-                'waiting' => collect(), 'done' => collect(),
+                'waiting' => collect(), 'done' => collect(), 'pendingReviews' => collect(),
+                'counterOpen' => false, 'hiddenWaiting' => 0,
             ])->with('error', 'No counter assigned. Contact admin.');
         }
 
         $serviceId = $counter?->service_id ?? $user->service_id;
         $counterId = $counter?->id;
+        $counterOpen = (bool) $counter?->isOpen();
 
         try {
             $current = $counter ? $queue->current($user) : null;
@@ -39,6 +42,8 @@ class QueueController extends Controller
             $previous = null;
         }
 
+        // A closed counter has no visible waiting list: those patients are held
+        // back from the display, so showing them here would be misleading.
         $waitingQuery = Token::with(['patient', 'doctor'])
             ->whereDate('token_date', $today)
             ->where('status', Token::WAITING);
@@ -48,15 +53,55 @@ class QueueController extends Controller
         if ($user->doctor_id) {
             $waitingQuery->where('doctor_id', $user->doctor_id);
         }
-        $waiting = $waitingQuery->orderBy('seq')->limit(20)->get();
+        $waiting = $counterOpen
+            ? $waitingQuery->atOpenCounter()->orderBy('seq')->limit(20)->get()
+            : collect();
 
-        $done = $counterId ? Token::with(['patient'])
+        $hiddenWaiting = $counter && $user->hasPermission('queue.next')
+            ? $queue->hiddenWaitingCount($user)
+            : 0;
+
+        $done = $counterId ? Token::with(['patient', 'review'])
             ->whereDate('token_date', $today)
             ->where('counter_id', $counterId)
             ->whereIn('status', [Token::COMPLETED, Token::SKIPPED, Token::CANCELLED, Token::CALLING, Token::SERVING])
             ->orderByDesc('updated_at')->limit(10)->get() : collect();
 
-        return view('queue.index', compact('counter', 'current', 'previous', 'waiting', 'done'));
+        // Counter operators moderate feedback for their own counter only; admins
+        // see the full list in the moderation dashboard instead.
+        $pendingReviews = ($counterId && $user->hasPermission('reviews.manage') && ! $user->isAdmin())
+            ? Review::with(['patient', 'token'])
+                ->where('status', Review::STATUS_PENDING)
+                ->whereHas('token', fn ($q) => $q->where('counter_id', $counterId))
+                ->orderByDesc('created_at')->limit(3)->get()
+            : collect();
+
+        return view('queue.index', compact(
+            'counter', 'current', 'previous', 'waiting', 'done',
+            'pendingReviews', 'counterOpen', 'hiddenWaiting',
+        ));
+    }
+
+    /**
+     * Open or close the operator's own counter. Closing hides its waiting
+     * patients from the display and blocks new calls; anything already being
+     * served can still be completed.
+     */
+    public function toggleCounter(Request $request, QueueService $queue)
+    {
+        if (! $request->user()->hasPermission('queue.next')) {
+            abort(403, 'Unauthorized.');
+        }
+
+        try {
+            $counter = $queue->toggleCounter($request->user());
+        } catch (ValidationException $e) {
+            return back()->with('error', collect($e->errors())->flatten()->first());
+        }
+
+        return back()->with('success', $counter->isOpen()
+            ? $counter->name.' is open — patients are visible as waiting again.'
+            : $counter->name.' is closed — its waiting patients are hidden from the display.');
     }
 
     public function next(Request $request, QueueService $queue)

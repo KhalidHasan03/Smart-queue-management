@@ -13,6 +13,14 @@
             <p class="text-xs text-slate-400 mt-1">Selecting replaces assignment for this counter.</p></div>
         @endif
         <label class="text-sm font-semibold flex gap-2 items-center"><input type="checkbox" name="is_active" value="1" @checked(old('is_active',$counter->is_active)) class="w-4 h-4 accent-indigo-600"> Active</label>
+        <label class="text-sm font-semibold flex gap-2 items-center">
+            <input type="checkbox" name="is_open" value="1" @checked(old('is_open',$counter->is_open)) class="w-4 h-4 accent-indigo-600">
+            Counter open
+            <span class="text-xs font-normal text-slate-400">
+                — while closed, waiting patients for this desk are hidden from the display
+                @if($counter->opened_at) <span class="block">Last opened {{ $counter->opened_at->format('d M Y, g:i A') }}@if($counter->closed_at) • closed {{ $counter->closed_at->format('d M Y, g:i A') }}@endif</span> @endif
+            </span>
+        </label>
         <label class="text-sm font-semibold flex gap-2 items-center"><input type="checkbox" name="show_on_display" value="1" @checked(old('show_on_display',$counter->show_on_display)) class="w-4 h-4 accent-indigo-600"> Show on TV display</label>
         <button class="qc-btn-primary">Update</button>
     </form>

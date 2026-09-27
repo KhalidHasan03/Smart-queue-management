@@ -64,31 +64,49 @@ class DisplayController extends Controller
             $live = $c->currentToken && in_array($c->currentToken->status, [Token::CALLING, Token::SERVING], true)
                 && $c->currentToken->token_date->isSameDay($today);
 
-            // Show the live token when one is being called/served, otherwise fall
-            // back to the most recently issued token so every row is populated.
+            // A closed counter shows nothing, so the wall never displays a
+            // stale number for a desk that is not taking patients. An in-flight
+            // visit is the exception: that patient is physically at the desk
+            // and must still see (and be seen by staff) their own number.
             $token = $live
                 ? $c->currentToken
-                : Token::where('counter_id', $c->id)->whereDate('token_date', $today)
-                    ->orderByDesc('created_at')->orderByDesc('id')->first();
+                : ($c->isOpen()
+                    ? Token::where('counter_id', $c->id)->whereDate('token_date', $today)
+                        ->orderByDesc('created_at')->orderByDesc('id')->first()
+                    : null);
 
             return [
                 'counter' => $c->name,
                 'room' => $c->room_no,
                 'service' => $c->service->name ?? '',
+                'is_open' => (bool) $c->is_open,
                 'token_no' => $token?->token_no,
                 'status' => $token?->status,
-                'status_label' => $token ? self::statusLabel($token->status) : null,
+                'status_label' => $token ? self::statusLabel($token->status) : ($c->isOpen() ? null : 'Closed'),
                 'patient' => $live && $showPatient ? $c->currentToken->patient->name ?? null : null,
                 'doctor' => $live ? $c->currentToken->doctor->name ?? null : null,
                 'is_live' => $live,
             ];
         });
 
+        // Waiting patients only appear while a counter for their service is
+        // switched on — a closed desk holds its queue back from the wall.
         $upcoming = Token::with(['service', 'counter'])
             ->whereDate('token_date', $today)
             ->where('status', Token::WAITING)
-            ->orderBy('created_at')->limit(8)->get()
+            ->atOpenCounter()
+            ->orderBy('created_at')->limit(12)->get()
             ->map(fn ($t) => ['token_no' => $t->token_no, 'service' => $t->service->name, 'counter' => $t->counter->name]);
+
+        // How many are held back right now, so the wall can explain an empty
+        // "Upcoming" panel instead of claiming the queue is clear.
+        $paused = Token::whereDate('token_date', $today)
+            ->where('status', Token::WAITING)
+            ->whereNotIn(
+                'service_id',
+                Counter::query()->serving()->distinct()->select('service_id')
+            )
+            ->count();
 
         $advertMode = Setting::get('advert.mode', 'cycle');
         $advertQuery = Advertisement::active()->ordered();
@@ -118,6 +136,7 @@ class DisplayController extends Controller
             'ticker' => Setting::get('display.ticker', ''),
             'now' => $now,
             'upcoming' => $upcoming,
+            'paused' => $paused,
             'advert' => [
                 'enabled' => Setting::get('advert.enabled', '1') === '1',
                 'mode' => $advertMode,

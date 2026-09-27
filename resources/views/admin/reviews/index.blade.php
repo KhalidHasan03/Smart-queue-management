@@ -1,161 +1,133 @@
 <x-app-layout>
-    @section('page-title', 'Reviews Management')
+    @section('page-title', 'Reviews')
+    {{--
+        Registered before Alpine boots: app.js is a deferred module in the head,
+        so a plain inline script here always runs first. This layout has no
+        @stack, so the script lives inside the slot.
+    --}}
+    <script>
+    window.reviewLive = function (query) {
+        return {
+            live: false,
+            secs: 15,
+            timer: null,
+            baseline: {{ $stats['pending'] }},
+            newCount: 0,
+            get stale() { return this.newCount > 0 },
+            get endpoint() {
+                const p = new URLSearchParams(query);
+                p.set('_pending_only', '1');
+                return `{{ route('admin.reviews.index') }}?${p.toString()}`;
+            },
+            // Polls in the background and only raises a banner when the pending
+            // count moves — the table is never rewritten under the moderator.
+            toggleLive() {
+                clearInterval(this.timer);
+                if (!this.live) { this.newCount = 0; return; }
+                this.timer = setInterval(() => this.check(), this.secs * 1000);
+                this.check();
+            },
+            async check() {
+                try {
+                    const res = await fetch(this.endpoint, { headers: { 'Accept': 'application/json' } });
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    this.newCount = Math.max(0, (data.pending ?? 0) - this.baseline);
+                } catch (e) { /* offline is fine — manual reload still works */ }
+            },
+        };
+    };
+    </script>
     <x-slot name="header">
-        <h2 class="text-2xl font-extrabold tracking-tight">Reviews Management</h2>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <p class="text-[11px] font-bold uppercase tracking-widest text-indigo-500">Patient feedback</p>
+                <h2 class="text-2xl font-extrabold tracking-tight">Reviews management 💬</h2>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <a href="{{ route('admin.reviews.export', request()->query()) }}" class="qc-btn-soft">⬇ Export CSV</a>
+                <a href="{{ route('review.kiosk') }}" target="_blank" rel="noopener" class="qc-btn-soft">📝 Kiosk ↗</a>
+                <a href="{{ route('reviews.setup') }}" class="qc-btn-primary">Kiosk setup</a>
+            </div>
+        </div>
     </x-slot>
 
-    <div class="qc-card p-6">
-        <!-- Filters -->
-        <form method="GET" class="mb-6 space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Rating</label>
-                    <select name="rating" class="qc-input w-full">
-                        <option value="">All Ratings</option>
-                        @for ($i = 5; $i >= 1; $i--)
-                            <option value="{{ $i }}" {{ request()->input('rating') == $i ? 'selected' : '' }}>{{ $i }} Stars</option>
-                        @endfor
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Category</label>
-                    <select name="category" class="qc-input w-full">
-                        <option value="">All Categories</option>
-                        @foreach ($categories as $cat)
-                            <option value="{{ $cat }}" {{ request()->input('category') === $cat ? 'selected' : '' }}>{{ ucfirst(str_replace('_', ' ', $cat)) }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Status</label>
-                    <select name="status" class="qc-input w-full">
-                        <option value="">All Status</option>
-                        <option value="1" {{ request()->boolean('status') ? 'selected' : '' }}>Approved</option>
-                        <option value="0" {{ request()->has('status') && !request()->boolean('status') ? 'selected' : '' }}>Pending</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Service</label>
-                    <select name="service_id" class="qc-input w-full">
-                        <option value="">All Services</option>
-                        @foreach ($services as $service)
-                            <option value="{{ $service->id }}" {{ request()->input('service_id') == $service->id ? 'selected' : '' }}>{{ $service->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Doctor</label>
-                    <select name="doctor_id" class="qc-input w-full">
-                        <option value="">All Doctors</option>
-                        @foreach ($doctors as $doctor)
-                            <option value="{{ $doctor->id }}" {{ request()->input('doctor_id') == $doctor->id ? 'selected' : '' }}>{{ $doctor->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Search</label>
-                    <input type="text" name="search" class="qc-input w-full" placeholder="Token, name, comment..." value="{{ request()->input('search') }}">
-                </div>
+    <div class="space-y-4" x-data="reviewLive({{ json_encode(array_map('urlencode', request()->query())) }})">
+        @include('reviews.partials.stats-cards', ['stats' => $stats, 'baseUrl' => route('admin.reviews.index')])
+
+        {{-- Rating distribution, straight from the aggregate. --}}
+        @php
+            $barColors = [
+                'rose' => 'bg-rose-500',
+                'amber' => 'bg-amber-500',
+                'teal' => 'bg-teal-500',
+                'emerald' => 'bg-emerald-500',
+            ];
+        @endphp
+        @if($stats['total'] > 0)
+        <div class="qc-card p-5">
+            <h3 class="font-bold mb-3">Rating distribution</h3>
+            <div class="grid sm:grid-cols-2 gap-x-8 gap-y-2">
+                @foreach(\App\Models\Review::RATINGS as $value => $meta)
+                    @php
+                        $count = $stats['distribution'][$value] ?? 0;
+                        $pct = $stats['total'] > 0 ? round($count / $stats['total'] * 100) : 0;
+                    @endphp
+                    <div class="flex items-center gap-3">
+                        <span class="w-20 text-sm shrink-0">{{ $meta['emoji'] }} {{ $meta['label'] }}</span>
+                        <div class="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full {{ $barColors[$meta['color']] ?? 'bg-slate-400' }} rounded-full" style="width:{{ $pct }}%"></div>
+                        </div>
+                        <span class="w-14 text-right text-xs text-slate-500 tabular-nums">{{ $count }} · {{ $pct }}%</span>
+                    </div>
+                @endforeach
             </div>
-            <div class="flex gap-3">
-                <button type="submit" class="qc-btn-primary">Filter</button>
-                <a href="{{ route('admin.reviews.index') }}" class="qc-btn-secondary">Reset</a>
-                <a href="{{ route('admin.reviews.export', request()->query()) }}" class="qc-btn-dark ml-auto">Export CSV</a>
+        </div>
+        @endif
+
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Quick views</span>
+                @foreach(\App\Support\ReviewFilters::PRESETS as $key => $label)
+                    @php $active = request('preset') === $key; @endphp
+                    <a href="{{ $active ? route('admin.reviews.index') : route('admin.reviews.index', ['preset' => $key]) }}"
+                       class="px-3 py-1.5 rounded-full text-xs font-bold border transition
+                              {{ $active ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600' }}">
+                        {{ $label }}
+                        @if($key === 'needs_attention' && $stats['negative_pending'] > 0)
+                            <span class="ms-1 {{ $active ? 'text-indigo-100' : 'text-rose-500' }}">{{ $stats['negative_pending'] }}</span>
+                        @elseif($key === 'awaiting' && $stats['pending'] > 0)
+                            <span class="ms-1 {{ $active ? 'text-indigo-100' : 'text-amber-500' }}">{{ $stats['pending'] }}</span>
+                        @endif
+                    </a>
+                @endforeach
+                @if(request()->hasAny(['search', 'status', 'rating', 'category', 'service_id', 'doctor_id', 'date_from', 'date_to', 'preset']))
+                    <a href="{{ route('admin.reviews.index') }}" class="text-xs font-bold text-indigo-600 hover:underline">✕ Clear all filters</a>
+                @endif
             </div>
-        </form>
 
-        <!-- Reviews Table -->
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead>
-                    <tr class="border-b border-slate-200 text-left text-sm font-medium text-slate-500">
-                        <th class="pb-3">Token</th>
-                        <th class="pb-3">Date</th>
-                        <th class="pb-3">Patient</th>
-                        <th class="pb-3">Rating</th>
-                        <th class="pb-3">Category</th>
-                        <th class="pb-3">Comment</th>
-                        <th class="pb-3">Service / Doctor</th>
-                        <th class="pb-3">Status</th>
-                        <th class="pb-3">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    @forelse ($reviews as $review)
-                        <tr class="hover:bg-slate-50">
-                            <td class="py-4 font-mono text-sm">{{ $review->token->token_no ?? 'N/A' }}</td>
-                            <td class="py-4 text-sm">{{ $review->token->token_date?->format('d M Y') ?? '' }}</td>
-                            <td class="py-4 text-sm">
-                                <div>{{ $review->is_anonymous ? 'Anonymous' : ($review->display_name ?? $review->token->patient->name ?? 'Unknown') }}</div>
-                                @if($review->is_anonymous)
-                                    <span class="text-xs text-slate-400">Anonymous</span>
-                                @endif
-                            </td>
-                            <td class="py-4 text-center">
-                                <span class="text-lg">{{ str_repeat('★', $review->rating) }}{{ str_repeat('☆', 5 - $review->rating) }}</span>
-                                <span class="text-sm text-slate-500 ml-1">({{ $review->rating }}/5)</span>
-                            </td>
-                            <td class="py-4 text-sm">
-                                @if($review->category)
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">
-                                        {{ ucfirst(str_replace('_', ' ', $review->category)) }}
-                                    </span>
-                                @else
-                                    <span class="text-slate-400">-</span>
-                                @endif
-                            </td>
-                            <td class="py-4 text-sm max-w-xs">
-                                <div class="truncate">{{ $review->comment ?? '<span class="text-slate-400">No comment</span>' }}</div>
-                            </td>
-                            <td class="py-4 text-sm">
-                                <div>{{ $review->token->service->name ?? 'N/A' }}</div>
-                                <div class="text-slate-500">{{ $review->token->doctor->name ?? 'N/A' }}</div>
-                            </td>
-                            <td class="py-4 text-center">
-                                @if($review->is_approved)
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">Approved</span>
-                                @else
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Pending</span>
-                                @endif
-                            </td>
-                            <td class="py-4 text-sm">
-                                <div class="flex items-center gap-2">
-                                    <a href="{{ route('admin.reviews.show', $review) }}" class="qc-btn-secondary text-xs py-1 px-2">View</a>
-
-                                    @if(!$review->is_approved)
-                                        <form action="{{ route('admin.reviews.approve', $review) }}" method="POST" class="inline">
-                                            @csrf @method('PATCH')
-                                            <button type="submit" class="qc-btn-success text-xs py-1 px-2"
-                                                    onclick="return confirm('Approve this review?')">Approve</button>
-                                        </form>
-                                    @else
-                                        <form action="{{ route('admin.reviews.reject', $review) }}" method="POST" class="inline">
-                                            @csrf @method('PATCH')
-                                            <button type="submit" class="qc-btn-warning text-xs py-1 px-2"
-                                                    onclick="return confirm('Reject this review?')">Reject</button>
-                                        </form>
-                                    @endif
-
-                                    <form action="{{ route('admin.reviews.destroy', $review) }}" method="POST" class="inline">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="qc-btn-danger text-xs py-1 px-2"
-                                                onclick="return confirm('Delete this review permanently?')">Delete</button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="9" class="py-12 text-center text-slate-500">No reviews found.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+            {{-- Opt-in live refresh. Off by default so a moderator is never
+                 interrupted mid-approve by a page swap. --}}
+            <label class="flex items-center gap-2 text-xs font-semibold text-slate-500 select-none">
+                <input type="checkbox" x-model="live" @change="toggleLive()" class="w-4 h-4 accent-indigo-600">
+                Auto-refresh
+                <span x-show="live" x-cloak class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full" x-text="`every ${secs}s`"></span>
+            </label>
         </div>
 
-        <!-- Pagination -->
-        <div class="mt-6">
-            {{ $reviews->links() }}
+        @include('reviews.partials.filters', [
+            'baseUrl' => route('admin.reviews.index'),
+            'services' => $services,
+            'doctors' => $doctors,
+        ])
+
+        <div x-show="stale" x-cloak class="qc-card px-4 py-3 flex flex-wrap items-center justify-between gap-3 border-amber-200 bg-amber-50/80">
+            <p class="text-sm font-semibold text-amber-800">
+                <span x-text="newCount"></span> new review<span x-show="newCount !== 1">s</span> arrived while you were working.
+            </p>
+            <button type="button" class="qc-btn-primary text-xs py-1.5 px-3" x-on:click="window.location.reload()">Reload now</button>
         </div>
+
+        @include('reviews.partials.table', ['reviews' => $reviews])
     </div>
 </x-app-layout>

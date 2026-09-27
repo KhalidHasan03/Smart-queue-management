@@ -34,6 +34,7 @@ return [
         'settings.manage',
         'reviews.view',
         'reviews.manage',
+        'reviews.delete',
     ],
 
     'roles' => [
@@ -55,7 +56,7 @@ return [
                 'adverts.view', 'adverts.manage', 'adverts.configure',
                 'reports.view',
                 'settings.manage',
-                'reviews.view', 'reviews.manage',
+                'reviews.view', 'reviews.manage', 'reviews.delete',
             ],
         ],
         'receptionist' => [
@@ -77,6 +78,10 @@ return [
                 'queue.view', 'queue.next', 'queue.previous', 'queue.skip',
                 'queue.recall', 'queue.complete', 'queue.cancel',
                 'display.view',
+                // Counter operators may approve/reject feedback for their own
+                // counter (see AdminReviewController::guardCounterScope). Delete
+                // and restore stay behind reviews.delete, which this role lacks.
+                'reviews.manage',
             ],
         ],
         'staff' => [

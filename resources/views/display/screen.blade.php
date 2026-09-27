@@ -48,9 +48,9 @@
                 </div>
             </section>
 
-            <section class="card rounded-2xl p-5 flex flex-col min-h-0 overflow-auto">
-                <h2 class="text-[11px] sm:text-sm font-bold uppercase tracking-widest text-indigo-200 mb-3">Upcoming in Queue</h2>
-                <div id="upcoming" class="flex flex-wrap gap-3 flex-1 items-start"></div>
+            <section class="card rounded-2xl p-3 sm:p-4 flex flex-col min-h-0 overflow-auto">
+                <h2 class="text-[11px] sm:text-sm font-bold uppercase tracking-widest text-indigo-200 mb-2">Upcoming in Queue</h2>
+                <div id="upcoming" class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-1.5 sm:gap-2 content-start"></div>
             </section>
         </div>
 
@@ -88,24 +88,32 @@ function renderNow(list){
     tbody.innerHTML = list.map(n => {
         const st = STATUS_PILLS[n.status] || {};
         const token = n.token_no
-            ? `<span class="text-2xl sm:text-3xl font-mono font-extrabold tracking-tight break-all ${n.is_live ? 'flash text-emerald-300' : 'text-white'}">${n.token_no}</span>`
-            : '<span class="text-2xl sm:text-3xl font-mono font-extrabold text-white/20">–––</span>';
+            ? `<span class="text-lg sm:text-xl font-mono font-extrabold tracking-tight break-all ${n.is_live ? 'flash text-emerald-300' : 'text-white'}">${n.token_no}</span>`
+            : '<span class="text-lg sm:text-xl font-mono font-extrabold text-white/20">–––</span>';
         const status = n.token_no
             ? `<span class="inline-block border px-3 py-1 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wider ${st.cls || 'bg-white/10 text-white/70 border-white/20'}">${st.label || n.status_label || n.status}</span>`
-            : '<span class="text-xs text-white/25">No token yet</span>';
+            : (n.is_open === false
+                ? '<span class="inline-block border border-rose-300/30 bg-rose-400/15 text-rose-300 px-3 py-1 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wider">Closed</span>'
+                : '<span class="text-xs text-white/25">No token yet</span>');
         const meta = [n.room ? 'Room '+n.room : '', n.service].filter(Boolean).join(' • ');
+        const closedBadge = n.is_open === false && !n.is_live
+            ? ' <span class="align-middle text-[9px] sm:text-[10px] uppercase tracking-widest font-bold text-rose-300/80">• closed</span>'
+            : '';
         return `<tr class="border-b border-white/5 ${n.is_live ? 'bg-emerald-400/5' : ''}">
-            <td class="px-5 py-3"><div class="font-bold text-base sm:text-lg break-words">${n.counter}</div>${meta ? '<div class="text-[10px] sm:text-xs text-indigo-200/70 break-words">'+meta+'</div>' : ''}</td>
+            <td class="px-5 py-3"><div class="font-bold text-base sm:text-lg break-words">${n.counter}${closedBadge}</div>${meta ? '<div class="text-[10px] sm:text-xs text-indigo-200/70 break-words">'+meta+'</div>' : ''}</td>
             <td class="px-5 py-3">${token}</td>
             <td class="px-5 py-3">${status}</td>
         </tr>`;
     }).join('');
 }
-function renderUpcoming(list){
+function renderUpcoming(list, paused){
     const el = document.getElementById('upcoming');
+    const empty = paused > 0
+        ? `<span class="col-span-full text-white/40 text-sm">No counters are open right now${paused === 1 ? ' — 1 patient is' : ' — '+paused+' patients are'} waiting. Please check back shortly.</span>`
+        : '<span class="col-span-full text-white/40 text-sm">Queue clear — no waiting tokens 🎉</span>';
     el.innerHTML = list.length
-        ? list.map(u => `<span class="bg-white/10 border border-white/15 px-4 py-2 rounded-xl text-center shrink-0"><span class="block text-xl sm:text-2xl font-mono font-extrabold break-all">${u.token_no}</span>${u.counter ? '<span class="block text-[11px] text-indigo-200/70 mt-0.5 break-words">'+u.counter+'</span>' : ''}</span>`).join('')
-        : '<span class="text-white/40">Queue clear — no waiting tokens 🎉</span>';
+        ? list.map(u => `<span class="bg-white/10 border border-white/15 px-2.5 py-1.5 rounded-lg text-center"><span class="block text-sm sm:text-base font-mono font-extrabold leading-tight break-all">${u.token_no}</span>${u.counter ? '<span class="block text-[10px] leading-tight text-indigo-200/70 mt-0.5 truncate">'+u.counter+'</span>' : ''}</span>`).join('')
+        : empty;
 }
 function renderAdvert(a){
     const pane = document.getElementById('advert');
@@ -178,7 +186,7 @@ async function load() {
         if (lastSig && sig !== lastSig) { beep(880); setTimeout(beep, 300, 660); }
         lastSig = sig;
         renderNow(d.now);
-        renderUpcoming(d.upcoming);
+        renderUpcoming(d.upcoming, d.paused || 0);
         scheduleAdvert(d.advert);
     } catch(e) {}
 }

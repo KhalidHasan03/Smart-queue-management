@@ -15,6 +15,10 @@
     .row { font-size: 13px; display: flex; justify-content: space-between; gap: 8px; text-align: left; margin: 5px 0; }
     .row b { text-align: right; }
     .footer { font-size: 11px; margin-top: 10px; background: #f8fafc; border-radius: 10px; padding: 8px; color: #475569; }
+    .review { margin-top: 10px; border: 2px dashed #a5b4fc; border-radius: 12px; padding: 10px; background: #eef2ff; text-align: center; }
+    .review .lbl { font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #4338ca; }
+    .review .code { font-size: 26px; font-weight: 800; letter-spacing: 4px; margin: 4px 0; color: #1e1b4b; }
+    .review .url { font-size: 10px; color: #4338ca; word-break: break-all; }
     .noprint { margin-top: 12px; display: flex; gap: 8px; justify-content: center; }
     .noprint button, .noprint a { font-size: 13px; font-weight: 700; border-radius: 10px; padding: 8px 14px; border: 1px solid #e2e8f0; background: #fff; text-decoration: none; color: #0f172a; cursor: pointer; }
     @media print { body { padding: 0; background: #fff; } .ticket { box-shadow: none; border: 1px dashed #94a3b8; border-radius: 0; } .noprint { display: none; } @page { size: 80mm auto; margin: 4mm; } }
@@ -34,18 +38,30 @@
         <div class="row"><span>Counter</span><b>{{ $token->counter->name }}@if($token->counter->room_no) / R-{{ $token->counter->room_no }}@endif</b></div>
     </div>
     <div class="footer">{{ \App\Models\Setting::get('token_footer', 'Please wait in waiting area') }}</div>
-    @if($token->status === \App\Models\Token::COMPLETED && $token->canBeReviewed())
-        <div class="noprint" style="margin-top: 8px;">
-            <a href="{{ route('review.show', $token->token_no) }}"
-               style="display: inline-block; font-size: 12px; font-weight: 700; border-radius: 8px; padding: 6px 12px; background: #059669; color: #fff; text-decoration: none;">
-                ⭐ Rate Your Visit
-            </a>
+    @if($token->review?->exists)
+        <div class="review">
+            <div class="lbl">Your feedback is in 🎉</div>
+            <div class="url">{{ route('review.thanks', ['code' => $token->review_code]) }}</div>
         </div>
-    @elseif($token->status === \App\Models\Token::COMPLETED && $token->review?->exists)
         <div class="noprint" style="margin-top: 8px;">
-            <a href="{{ route('review.success', $token->token_no) }}"
+            <a href="{{ route('review.thanks', ['code' => $token->review_code]) }}"
                style="display: inline-block; font-size: 12px; font-weight: 700; border-radius: 8px; padding: 6px 12px; background: #6366f1; color: #fff; text-decoration: none;">
                 📝 View Your Review
+            </a>
+        </div>
+    @elseif($token->hasReviewCode())
+        {{-- The code is printed as soon as the slip is issued, so the patient
+             has it in hand; the kiosk will only accept it once the visit is
+             actually complete. --}}
+        <div class="review">
+            <div class="lbl">Rate your visit</div>
+            <div class="code">{{ $token->review_code }}</div>
+            <div class="url">{{ route('review.kiosk') }} — available once your visit is complete</div>
+        </div>
+        <div class="noprint" style="margin-top: 8px;">
+            <a href="{{ route('review.kiosk', ['code' => $token->review_code]) }}"
+               style="display: inline-block; font-size: 12px; font-weight: 700; border-radius: 8px; padding: 6px 12px; background: #059669; color: #fff; text-decoration: none;">
+                😊 Rate Your Visit
             </a>
         </div>
     @endif

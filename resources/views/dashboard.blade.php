@@ -1,5 +1,15 @@
 <x-app-layout>
     @section('page-title', 'Dashboard')
+    @php
+        // Static class map: Tailwind purges dynamically built "bg-{{ $color }}-500"
+        // names from the built CSS, leaving the bars uncoloured.
+        $barColors = [
+            'rose' => 'bg-rose-500',
+            'amber' => 'bg-amber-500',
+            'teal' => 'bg-teal-500',
+            'emerald' => 'bg-emerald-500',
+        ];
+    @endphp
     <x-slot name="header">
         <div class="flex flex-wrap items-end justify-between gap-3">
             <div><p class="text-[11px] font-bold uppercase tracking-widest text-indigo-500">Today • {{ now()->format('d M Y') }}</p>
@@ -34,6 +44,15 @@
         </div>
         @endforeach
     </div>
+    @if(($stats['waiting_paused'] ?? 0) > 0)
+    <div class="qc-card mt-3 px-4 py-3 flex flex-wrap items-center gap-3 border-amber-200 bg-amber-50/70">
+        <span class="text-lg leading-none">🔒</span>
+        <p class="text-sm font-semibold text-amber-800">
+            {{ $stats['waiting_paused'] }} patient{{ $stats['waiting_paused'] === 1 ? ' is' : 's are' }} waiting at a closed counter
+            <span class="font-normal text-amber-700/80">— hidden from the display and from the public waiting count until that counter is switched on.</span>
+        </p>
+    </div>
+    @endif
     <div class="grid lg:grid-cols-5 gap-4 mt-4">
         <div class="qc-card lg:col-span-3 overflow-hidden">
             <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
@@ -86,6 +105,47 @@
                 <td><span class="pill-{{ $t->status }}">{{ $t->status }}</span></td></tr>
             @empty<tr><td colspan="4" class="px-4 py-8 text-center text-slate-400">No assigned patients today — ask admin to set your service assignment.</td></tr>@endforelse</tbody>
         </table></div>
+    </div>
+    @endif
+    @if($reviewStats)
+    <div class="grid lg:grid-cols-3 gap-4 mt-4">
+        <div class="qc-card p-5">
+            <h3 class="font-bold mb-3">💬 Patient feedback</h3>
+            @if($reviewStats['total'] > 0)
+                <div class="flex items-center gap-4">
+                    <p class="text-5xl font-extrabold">{{ number_format($reviewStats['average'], 1) }}</p>
+                    <div>
+                        <p class="text-3xl">{{ \App\Models\Review::RATINGS[max(1, min(4, round($reviewStats['average'])))]['emoji'] ?? '' }}</p>
+                        <p class="text-xs text-slate-400">average of {{ $reviewStats['total'] }} reviews</p>
+                    </div>
+                </div>
+                <div class="mt-4 space-y-1.5">
+                    @foreach(\App\Models\Review::RATINGS as $value => $meta)
+                        @php $c = $reviewStats['distribution'][$value] ?? 0; $pct = $reviewStats['total'] > 0 ? round($c / $reviewStats['total'] * 100) : 0; @endphp
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="w-16">{{ $meta['emoji'] }} {{ $meta['label'] }}</span>
+                                <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full {{ $barColors[$meta['color']] ?? 'bg-slate-400' }} rounded-full" style="width:{{ $pct }}%"></div></div>
+                            <span class="w-6 text-right text-slate-400">{{ $c }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <p class="text-sm text-slate-400">No feedback yet. Share the kiosk link on token slips to start collecting reviews.</p>
+            @endif
+            @if(auth()->user()->hasPermission('reviews.view'))
+                <a href="{{ route('admin.reviews.index') }}" class="qc-btn-soft w-full mt-4">Open reviews →</a>
+            @endif
+        </div>
+        <a href="{{ route('admin.reviews.index', ['preset' => 'awaiting']) }}" class="qc-card p-5 hover:shadow-md transition">
+            <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Awaiting moderation</p>
+            <p class="text-4xl font-extrabold mt-1 text-amber-600">{{ $reviewStats['pending'] }}</p>
+            <p class="text-xs text-slate-500 mt-2">Reviews waiting on a person</p>
+        </a>
+        <a href="{{ route('admin.reviews.index', ['preset' => 'needs_attention']) }}" class="qc-card p-5 hover:shadow-md transition">
+            <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Needs attention</p>
+            <p class="text-4xl font-extrabold mt-1 text-rose-600">{{ $reviewStats['negative_pending'] }}</p>
+            <p class="text-xs text-slate-500 mt-2">Unhappy ratings to respond to</p>
+        </a>
     </div>
     @endif
     @if(auth()->user()->hasPermission('display.manage'))

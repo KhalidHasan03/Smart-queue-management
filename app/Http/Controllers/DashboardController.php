@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Admin\AdminReviewController;
 use App\Models\Counter;
 use App\Models\Token;
 use App\Models\User;
@@ -16,7 +17,12 @@ class DashboardController extends Controller
         $today = Carbon::today()->toDateString();
         $base = Token::whereDate('token_date', $today);
         $stats = [
-            'waiting' => (clone $base)->where('status', Token::WAITING)->count(),
+            'waiting' => (clone $base)->where('status', Token::WAITING)->atOpenCounter()->count(),
+            // Patients held back because no counter for their service is open.
+            // Staff need this; the public landing page deliberately does not.
+            'waiting_paused' => (clone $base)->where('status', Token::WAITING)
+                ->whereNotIn('service_id', Counter::query()->serving()->distinct()->select('service_id'))
+                ->count(),
             'calling' => (clone $base)->where('status', Token::CALLING)->count(),
             'serving' => (clone $base)->where('status', Token::SERVING)->count(),
             'completed' => (clone $base)->where('status', Token::COMPLETED)->count(),
@@ -42,6 +48,11 @@ class DashboardController extends Controller
             $displayCounters = Counter::with('service')->orderBy('name')->get();
         }
 
-        return view('dashboard', compact('stats', 'recent', 'staffTokens', 'displayCounters'));
+        $reviewStats = null;
+        if ($user->hasPermission('reviews.view')) {
+            $reviewStats = app(AdminReviewController::class)->stats();
+        }
+
+        return view('dashboard', compact('stats', 'recent', 'staffTokens', 'displayCounters', 'reviewStats'));
     }
 }

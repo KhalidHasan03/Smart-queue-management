@@ -8,7 +8,18 @@ class Rbac
 {
     public const OVERRIDE_KEY = 'rbac.overrides';
 
-    protected static ?array $overrideCache = null;
+    /**
+     * Container key for the memoised override list.
+     *
+     * This used to be a static property. A static survives for the lifetime of
+     * the PHP process, so under a long-lived worker (Octane, queue workers, and
+     * every `php artisan test` process) a stale override list could outlive the
+     * request that populated it, and a test could inherit permissions from a
+     * previous test. Binding it as a scoped instance ties the memo to a single
+     * request instead: the container flushes it between requests and rebuilds
+     * the app per test.
+     */
+    protected const OVERRIDE_SCOPED = 'rbac.overrides.memo';
 
     public static function permissions(): array
     {
@@ -22,10 +33,15 @@ class Rbac
 
     public static function overrides(): array
     {
-        if (static::$overrideCache !== null) {
-            return static::$overrideCache;
+        if (! app()->bound(static::OVERRIDE_SCOPED)) {
+            app()->scoped(static::OVERRIDE_SCOPED, fn (): array => static::loadOverrides());
         }
 
+        return app(static::OVERRIDE_SCOPED);
+    }
+
+    protected static function loadOverrides(): array
+    {
         try {
             $raw = Setting::get(static::OVERRIDE_KEY);
         } catch (\Throwable $e) {
@@ -34,12 +50,14 @@ class Rbac
 
         $data = $raw ? json_decode($raw, true) : [];
 
-        return static::$overrideCache = is_array($data) ? $data : [];
+        return is_array($data) ? $data : [];
     }
 
     public static function clearCache(): void
     {
-        static::$overrideCache = null;
+        if (app()->bound(static::OVERRIDE_SCOPED)) {
+            app()->forgetInstance(static::OVERRIDE_SCOPED);
+        }
     }
 
     public static function rolePermissions(string $role): array

@@ -34,8 +34,23 @@
             <a href="{{ route('queue.index') }}" class="qc-navlink {{ request()->routeIs('queue.*') ? 'qc-navlink-active' : '' }}"><span>⚡</span> My Queue</a>
             @endif
             <a href="{{ route('display') }}" target="_blank" class="qc-navlink"><span>📺</span> Live Display <span class="ms-auto text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full">LIVE</span></a>
+            {{-- The public kiosk is a public page, so every role gets the link.
+                 The pill mirrors ReviewSettings::enabled() so staff can see at a
+                 glance whether patients can actually leave feedback right now. --}}
+            @php $kioskLive = \App\Support\ReviewSettings::enabled(); @endphp
+            <a href="{{ route('review.kiosk') }}" target="_blank" rel="noopener" class="qc-navlink" title="Open the patient review kiosk in a new tab"><span>📝</span> Review Kiosk <span class="ms-auto text-[10px] px-2 py-0.5 rounded-full {{ $kioskLive ? 'bg-teal-500/20 text-teal-300' : 'bg-rose-500/20 text-rose-300' }}">{{ $kioskLive ? 'LIVE' : 'OFF' }}</span></a>
             @if($u?->hasPermission('display.manage'))
             <a href="{{ route('display.manage') }}" class="qc-navlink {{ request()->routeIs('display.manage') ? 'qc-navlink-active' : '' }}"><span>🖥️</span> Display Setup</a>
+            @endif
+            @if($u?->hasPermission('reviews.view'))
+            <a href="{{ route('admin.reviews.index') }}" class="qc-navlink {{ request()->routeIs('admin.reviews.*') ? 'qc-navlink-active' : '' }}"><span>💬</span> Reviews</a>
+            @elseif($u?->hasPermission('reviews.manage'))
+            {{-- Counter operators lack reviews.view, so they get the
+                 counter-scoped moderation page instead of the admin one. --}}
+            <a href="{{ route('queue.reviews') }}" class="qc-navlink {{ request()->routeIs('queue.reviews') ? 'qc-navlink-active' : '' }}"><span>💬</span> My Counter Reviews</a>
+            @endif
+            @if($u?->hasPermission('display.manage'))
+            <a href="{{ route('reviews.setup') }}" class="qc-navlink {{ request()->routeIs('reviews.setup*') ? 'qc-navlink-active' : '' }}"><span>🧭</span> Kiosk Setup</a>
             @endif
             @if($u?->hasPermission('adverts.view'))
             <a href="{{ route('admin.advertisements.index') }}" class="qc-navlink {{ request()->routeIs('admin.advertisements.*') ? 'qc-navlink-active' : '' }}"><span>📢</span> Advertisements</a>

@@ -6,7 +6,6 @@
     @include('landing.components.how-it-works')
     @include('landing.components.features')
     @include('landing.components.pricing')
-    @include('landing.components.reviews')
     @include('landing.components.faq')
     @include('landing.components.demo-cta')
 @endsection

@@ -20,6 +20,7 @@ class StoreCounterRequest extends FormRequest
             'room_no' => ['nullable', 'string', 'max:50'],
             'service_id' => ['required', 'exists:services,id'],
             'is_active' => ['sometimes', 'boolean'],
+            'is_open' => ['sometimes', 'boolean'],
             'show_on_display' => ['sometimes', 'boolean'],
         ];
     }

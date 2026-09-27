@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\CounterReviewController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DisplayController;
 use App\Http\Controllers\LandingController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QueueController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\ReviewSetupController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TokenController;
 use Illuminate\Support\Facades\Route;
@@ -28,19 +30,21 @@ Route::get('/contact', [LandingController::class, 'contact'])->name('landing.con
 Route::get('/pricing', [LandingController::class, 'pricing'])->name('landing.pricing');
 Route::get('/industry', [LandingController::class, 'industry'])->name('landing.industry');
 
-// Review system (public)
-Route::post('/reviews/verify', [LandingController::class, 'verifyToken'])->name('reviews.verify');
-Route::post('/reviews', [LandingController::class, 'storeReview'])->name('reviews.store');
-Route::get('/reviews', [LandingController::class, 'getReviews'])->name('reviews.list');
-
-// Public Review Routes (post-completion)
-Route::get('/review/{token}', [ReviewController::class, 'show'])->name('review.show');
-Route::post('/review/{token}', [ReviewController::class, 'store'])->name('review.store');
-Route::get('/review/{token}/success', [ReviewController::class, 'success'])->name('review.success');
+// Review kiosk (public, code-gated, shown after a service is completed).
+// The review code is the only accepted key — token numbers restart daily and
+// cannot identify a visit — and every step is rate limited per IP.
+Route::get('/review', [ReviewController::class, 'index'])->name('review.kiosk');
+Route::post('/review/verify', [ReviewController::class, 'verify'])
+    ->middleware('throttle:review-kiosk')
+    ->name('review.verify');
+Route::post('/review/submit', [ReviewController::class, 'submit'])
+    ->middleware('throttle:review-kiosk')
+    ->name('review.submit');
+Route::post('/review/reset', [ReviewController::class, 'resetSession'])->name('review.reset');
+Route::get('/review/thanks', [ReviewController::class, 'thanks'])->name('review.thanks');
 
 // Contact form
 Route::post('/contact', [LandingController::class, 'submitContact'])->name('contact.submit');
-Route::get('/reviews', [LandingController::class, 'getReviews'])->name('reviews.list');
 
 Route::get('/display', [DisplayController::class, 'screen'])->name('display');
 Route::get('/api/display', [DisplayController::class, 'api'])->name('display.api');
@@ -59,6 +63,9 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
         Route::post('/tokens', [TokenController::class, 'store'])->name('tokens.store');
     });
     Route::middleware('permission:serials.view')->group(function () {
+        // Must stay ahead of /tokens/{token} so "issued" is not captured as a
+        // token id (guarded by AuditSmokeTest::test_token_create_route_not_shadowed_by_show).
+        Route::get('/tokens/issued', [TokenController::class, 'issued'])->name('tokens.issued');
         Route::get('/tokens', [TokenController::class, 'index'])->name('tokens.index');
         Route::get('/tokens/{token}', [TokenController::class, 'show'])->name('tokens.show');
         Route::get('/tokens/{token}/print', [TokenController::class, 'print'])->name('tokens.print');
@@ -67,7 +74,15 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
     Route::middleware('permission:queue.view')->group(function () {
         Route::get('/queue', [QueueController::class, 'index'])->name('queue.index');
     });
+    // The counter review page is the operator-facing counterpart to
+    // /admin/reviews: same filters and actions, scoped to their own counter.
+    Route::middleware('permission:reviews.manage')->group(function () {
+        Route::get('/queue/reviews', [CounterReviewController::class, 'index'])->name('queue.reviews');
+    });
     Route::middleware('permission:queue.next')->post('/queue/next', [QueueController::class, 'next'])->name('queue.next');
+    // Operators flip their own counter open/closed; closing hides its waiting
+    // patients from the display and blocks new calls.
+    Route::middleware('permission:queue.next')->post('/queue/counter/toggle', [QueueController::class, 'toggleCounter'])->name('queue.counter.toggle');
     Route::middleware('permission:queue.previous')->get('/queue/previous', [QueueController::class, 'previous'])->name('queue.previous');
     Route::post('/queue/{token}/{action}', [QueueController::class, 'action'])->whereIn('action', ['start', 'complete', 'skip', 'recall', 'cancel'])->name('queue.action');
 
@@ -79,6 +94,8 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
     Route::middleware('permission:display.manage')->group(function () {
         Route::get('/display/manage', [DisplayController::class, 'manage'])->name('display.manage');
         Route::put('/display/manage', [DisplayController::class, 'updateManage'])->name('display.update');
+        Route::get('/reviews/setup', [ReviewSetupController::class, 'edit'])->name('reviews.setup');
+        Route::put('/reviews/setup', [ReviewSetupController::class, 'update'])->name('reviews.setup.update');
     });
 
     Route::middleware('permission:reports.view')->group(function () {
@@ -96,6 +113,7 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
     });
     Route::middleware('permission:counters.manage')->group(function () {
         Route::resource('admin/counters', CounterController::class, ['as' => 'admin'])->except(['show']);
+        Route::post('/admin/counters/{counter}/toggle', [CounterController::class, 'toggle'])->name('admin.counters.toggle');
     });
     Route::middleware('permission:users.view')->group(function () {
         Route::get('admin/users', [UserController::class, 'index'])->name('admin.users.index');
@@ -141,9 +159,21 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
     Route::middleware('permission:reviews.view')->group(function () {
         Route::get('/admin/reviews', [AdminReviewController::class, 'index'])->name('admin.reviews.index');
         Route::get('/admin/reviews/export', [AdminReviewController::class, 'export'])->name('admin.reviews.export');
+    });
+
+    Route::middleware('permission:reviews.manage')->group(function () {
+        // Readable by counter operators as well, so they can see the full
+        // comment at their own counter. AdminReviewController::show applies the
+        // same counter-scope guard as the approve/reject actions.
         Route::get('/admin/reviews/{review}', [AdminReviewController::class, 'show'])->name('admin.reviews.show');
         Route::patch('/admin/reviews/{review}/approve', [AdminReviewController::class, 'approve'])->name('admin.reviews.approve');
         Route::patch('/admin/reviews/{review}/reject', [AdminReviewController::class, 'reject'])->name('admin.reviews.reject');
+        Route::post('/admin/reviews/bulk', [AdminReviewController::class, 'bulk'])->name('admin.reviews.bulk');
+    });
+
+    // Delete and restore are reserved for admins (see AdminReviewController).
+    Route::middleware('permission:reviews.delete')->group(function () {
+        Route::patch('/admin/reviews/{review}/restore', [AdminReviewController::class, 'restore'])->name('admin.reviews.restore');
         Route::delete('/admin/reviews/{review}', [AdminReviewController::class, 'destroy'])->name('admin.reviews.destroy');
     });
 });

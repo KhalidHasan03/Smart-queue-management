@@ -37,30 +37,50 @@ class TokenController extends Controller
         $this->authorize('create', Token::class);
         $services = Service::where('is_active', true)->orderBy('name')->get();
         $doctors = Doctor::with('service')->where('is_active', true)->orderBy('name')->get();
-        $doctorsJson = $doctors->map(fn ($d) => [
+        $doctorOptions = $doctors->map(fn ($d) => [
             'id' => $d->id,
             'name' => $d->name,
             'service_id' => $d->service_id,
             'room' => $d->room_no,
-        ])->values()->toJson();
+        ])->values();
         $prefill = null;
         if ($request->filled('phone')) {
             $prefill = Patient::where('phone', Patient::normalizePhone($request->input('phone')))->latest()->first();
         }
 
-        return view('tokens.create', compact('services', 'doctors', 'doctorsJson', 'prefill'));
+        return view('tokens.create', compact('services', 'doctors', 'doctorOptions', 'prefill'));
     }
 
     public function store(StoreTokenRequest $request, TokenService $service)
     {
-        $token = $service->issue(
+        $tokens = $service->issueMany(
             $request->only(['name', 'phone', 'age', 'gender', 'address']),
-            (int) $request->input('service_id'),
-            (int) $request->input('doctor_id'),
+            $request->servicePairs(),
             $request->user()->id
         );
 
-        return redirect()->route('tokens.show', $token)->with('success', 'Token '.$token->token_no.' issued.');
+        return redirect()
+            ->route('tokens.issued', ['tokens' => $tokens->pluck('id')->all()])
+            ->with('success', $tokens->count() === 1
+                ? 'Token '.$tokens->first()->token_no.' issued.'
+                : $tokens->count().' tokens issued: '.$tokens->pluck('token_no')->implode(', ').'.');
+    }
+
+    /**
+     * Confirmation screen listing every token issued by a single registration,
+     * so a patient taking several services gets one print button per ticket.
+     */
+    public function issued(Request $request)
+    {
+        $this->authorize('viewAny', Token::class);
+
+        $keys = array_values(array_filter(array_map('intval', (array) $request->query('tokens', []))));
+        $tokens = Token::with(['patient', 'service', 'doctor', 'counter'])
+            ->whereIn('id', $keys)
+            ->orderBy('id')
+            ->get();
+
+        return view('tokens.issued', compact('tokens'));
     }
 
     public function show(Token $token)

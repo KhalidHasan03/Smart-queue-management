@@ -8,6 +8,7 @@
             <div><label class="qc-label">Room</label><input name="room_no" value="{{ old('room_no') }}" placeholder="101" class="qc-input mt-1"></div>
         </div>
         <label class="text-sm font-semibold flex gap-2 items-center"><input type="checkbox" name="is_active" value="1" checked class="w-4 h-4 accent-indigo-600"> Active</label>
+        <label class="text-sm font-semibold flex gap-2 items-center"><input type="checkbox" name="is_open" value="1" class="w-4 h-4 accent-indigo-600"> Counter open <span class="text-xs font-normal text-slate-400">— leave off to create it closed; the operator switches it on from the console</span></label>
         <label class="text-sm font-semibold flex gap-2 items-center"><input type="checkbox" name="show_on_display" value="1" checked class="w-4 h-4 accent-indigo-600"> Show on TV display</label>
         <button class="qc-btn-primary">Save counter</button>
     </form>

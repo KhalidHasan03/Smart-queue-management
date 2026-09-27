@@ -27,6 +27,43 @@ class QueueService
         return Carbon::today()->toDateString();
     }
 
+    /**
+     * Flip the operator's own counter between open and closed.
+     *
+     * Closing hides the desk's waiting patients from the TV display and blocks
+     * new calls, but deliberately leaves any in-flight visit alone so a patient
+     * already at the desk can always be completed.
+     */
+    public function toggleCounter(User $operator): Counter
+    {
+        $counter = $this->operatorCounter($operator);
+
+        return $counter->isOpen() ? $counter->markClosed() : $counter->markOpen();
+    }
+
+    /**
+     * How many patients are currently held back because no counter for their
+     * service is switched on. Visibility is per service, so a closed desk with
+     * an open sibling on the same service still reports zero.
+     */
+    public function hiddenWaitingCount(User $operator): int
+    {
+        $counter = Counter::find($operator->counter_id ?: $operator->counter?->id);
+
+        if (! $counter) {
+            return 0;
+        }
+
+        return Token::whereDate('token_date', $this->today())
+            ->where('status', Token::WAITING)
+            ->where('service_id', $counter->service_id)
+            ->whereNotIn(
+                'service_id',
+                Counter::query()->serving()->distinct()->select('service_id')
+            )
+            ->count();
+    }
+
     public function current(User $operator): ?Token
     {
         $counter = $this->operatorCounter($operator);
@@ -43,6 +80,14 @@ class QueueService
     {
         return DB::transaction(function () use ($operator) {
             $counter = $this->operatorCounter($operator);
+
+            // A closed desk must not pull a new patient in. Visits already in
+            // flight are untouched — complete()/skip() stay available below.
+            if (! $counter->isOpen()) {
+                throw ValidationException::withMessages([
+                    'queue' => $counter->name.' is closed. Open the counter to call the next patient.',
+                ]);
+            }
 
             $active = Token::whereDate('token_date', $this->today())
                 ->where('counter_id', $counter->id)
